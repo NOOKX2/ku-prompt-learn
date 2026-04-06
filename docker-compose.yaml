@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: ku_promptlearn_app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app                # เชื่อมโค้ดในเครื่องเข้า Container (Hot Reload)
+      - /app/node_modules     # ป้องกัน node_modules ตีกัน
+    env_file:
+      - .env                  # สำคัญ: ต้องมี DIFY_API_KEY ในนี้!
+    environment:
+      - NODE_ENV=development
+    # รันโหมด dev เพื่อให้ Cursor และ Next.js ทำงานร่วมกันได้
+    command: sh -c "bun install && bun dev"
+    restart: unless-stopped

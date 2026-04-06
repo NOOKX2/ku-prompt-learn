@@ -14,16 +14,16 @@ export default function StudioPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-brand">
           สตูดิโอ
         </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="mt-2 font-semibold tracking-tight text-lg md:text-2xl lg:text-4xl">
           สร้างและรันคำสั่ง
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-black">
-          กรอกข้อมูลด้านล่าง แล้วกดรัน — ระบบจะส่งไปยัง Dify (chat / completion / workflow)
-          ตามที่ตั้งใน .env และแสดงคำตอบสตรีมในหน้านี้
+          กรอกข้อมูลด้านล่าง แล้วกดรัน — ระบบจะส่งคำสั่งไปยัง Dify (Chat API)
+          ฝั่งเซิร์ฟเวอร์ และแสดงคำตอบสตรีมในหน้านี้
         </p>
         <p className="mt-2 font-mono text-[11px] text-neutral-600">
-          ต้องตั้งค่า DIFY_API_KEY, DIFY_API_URL, DIFY_APP_MODE (chat หรือ completion หรือ
-          workflow) ให้ตรงกับแอปใน Dify — ถ้า error ลองเปิด{" "}
+          ต้องตั้งค่า DIFY_API_KEY / DIFY_API_URL และ DIFY_APP_MODE (chat หรือ completion)
+          ให้ตรงกับประเภทแอปใน Dify — ถ้า error ลองเปิด{" "}
           <a
             href="/api/generate"
             className="text-brand underline"
