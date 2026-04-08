@@ -13,7 +13,6 @@
     "@fontsource/noto-sans-thai": "^5.2.8",
     "@react-pdf/renderer": "^4.3.3",
     "next": "16.2.2",
-    "pdfjs-dist": "^5.6.205",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
