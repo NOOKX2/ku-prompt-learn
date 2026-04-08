@@ -41,6 +41,12 @@ export async function streamGenerate(args: GenerateArgs): Promise<void> {
     accumulated += decoder.decode(value, { stream: true });
     onChunk(accumulated);
   }
+
+  if (!accumulated.trim()) {
+    onChunk(
+      "[แจ้งจากแอป] เชื่อมต่อสำเร็จแต่ไม่ได้รับข้อความจากสตรีม Dify — ถ้าใช้ Workflow ให้ตรวจว่าโหนดส่งออกเป็นข้อความ (text_chunk) หรือว่า outputs ของ workflow มีฟิลด์ข้อความที่อ่านได้",
+    );
+  }
 }
 
 async function postJson(prompt: string, signal: AbortSignal): Promise<Response> {

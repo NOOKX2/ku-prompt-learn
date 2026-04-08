@@ -48,7 +48,7 @@ export const promptTemplates: PromptTemplate[] = [
     shortTitle: "ข้อสอบจำลอง",
     title: "สร้างข้อสอบจำลองตามรายวิชาและระดับความยาก",
     description:
-      "ใช้บทบาทอาจารย์ผู้สอบ มก. เน้นวัดความเข้าใจ มีตัวเลือกหลอกจากจุดที่นิสิตมักเข้าใจผิด พร้อมเฉลยและเหตุผล",
+      "ใช้บทบาทอาจารย์ผู้สอบ มก. — เลือกได้ทั้งข้อปรนัย (มีตัวเลือกหลอก) และ/หรือข้ออัตนัย (เฉลยแนว/เกณฑ์ให้คะแนน)",
     fields: [
       {
         key: "subject",
@@ -100,9 +100,15 @@ export const promptTemplates: PromptTemplate[] = [
       },
       {
         key: "count",
-        label: "จำนวนข้อปรนัย",
+        label: "จำนวนข้อปรนัย (0 = ไม่สร้างข้อปรนัย)",
         type: "text",
         placeholder: "เช่น 5",
+      },
+      {
+        key: "count_essay",
+        label: "จำนวนข้ออัตนัย (0 = ไม่สร้างข้ออัตนัย)",
+        type: "text",
+        placeholder: "เช่น 2",
       },
       {
         key: "material",
@@ -118,28 +124,68 @@ export const promptTemplates: PromptTemplate[] = [
       const chapters = trim(v.chapters || "");
       const focus = trim(v.focus || "");
       const difficulty = trim(v.difficulty || "ปานกลาง");
-      const count = trim(v.count || "5");
+      const countRaw = trim(v.count || "");
+      const countEssayRaw = trim(v.count_essay || "");
+      let nMcq = countRaw === "" ? 5 : Number.parseInt(countRaw, 10);
+      let nEssay = countEssayRaw === "" ? 0 : Number.parseInt(countEssayRaw, 10);
+      if (!Number.isFinite(nMcq) || nMcq < 0) nMcq = 5;
+      if (!Number.isFinite(nEssay) || nEssay < 0) nEssay = 0;
+      if (nMcq === 0 && nEssay === 0) nMcq = 5;
       const material = trim(v.material || "");
+
+      const taskLines: string[] = [];
+      taskLines.push(`ระดับความยากโดยรวม: ${difficulty}`);
+      if (nMcq > 0) {
+        taskLines.push(`- สร้างข้อสอบแบบปรนัย (เลือกคำตอบเดียว) จำนวน ${nMcq} ข้อ — แต่ละข้อมีตัวเลือกหลอกจากจุดที่นิสิตมักเข้าใจผิด`);
+      }
+      if (nEssay > 0) {
+        taskLines.push(
+          `- สร้างข้อสอบแบบอัตนัย จำนวน ${nEssay} ข้อ — คำถามเปิด/วิเคราะห์/อธิบาย ตามความเหมาะสมกับเนื้อหา (ไม่มีตัวเลือก ก ข ค ง)`,
+        );
+      }
+
+      const ruleSteps: string[] = [
+        "สรุปสั้นๆ ว่าจะวัดสาระสำคัญอะไรจากเนื้อหาที่ให้",
+      ];
+      if (nMcq > 0) {
+        ruleSteps.push(
+          "สำหรับข้อปรนัย: ร่างโจทย์แต่ละข้อพร้อมตัวเลือกหลอกจากจุดที่นิสิตมักเข้าใจผิด และให้เฉลยพร้อมเหตุผลทีละข้อ",
+        );
+      }
+      if (nEssay > 0) {
+        ruleSteps.push(
+          "สำหรับข้ออัตนัย: ระบุคำถามให้ชัด กำหนดคะแนนหรือเกณฑ์ให้คะแนน (rubric) แบบย่อ และให้แนวเฉลยหรือประเด็นที่คำตอบควรครอบคลุม — ไม่ใช้ตัวเลือก ก ข ค ง",
+        );
+      }
+      ruleSteps.push(
+        "ตรวจทานว่าข้อสอบสอดคล้องกับเนื้อหาที่ให้ ไม่ดึงความรู้ภายนอกที่ไม่เกี่ยวข้อง",
+      );
+      const rulesBlock = ruleSteps.map((line, i) => `${i + 1}) ${line}`).join("\n");
+
+      const formatMcq =
+        nMcq > 0
+          ? `- ข้อปรนัย: ข้อ X) คำถาม … ก) … ข) … ค) … ง) …\n- เฉลยข้อปรนัย: ข้อ X คำตอบ … เพราะ …`
+          : "";
+      const formatEssay =
+        nEssay > 0
+          ? `- ข้ออัตนัย: ข้อ X) (คะแนน …) คำถาม …\n- แนวเฉลย/เกณฑ์ให้คะแนน: ข้อ X …`
+          : "";
 
       return `คุณเป็นอาจารย์ผู้สอนรายวิชา "${subject}"${facultyMajor ? ` (${facultyMajor})` : ""} มหาวิทยาลัยเกษตรศาสตร์
 
 ## งาน
-สร้างข้อสอบปรนัย ${count} ข้อ ระดับความยาก: ${difficulty}
+${taskLines.join("\n")}
 ${chapters ? `ช่วงเนื้อหา/แหล่งอ้างอิงที่ผู้เรียนระบุ: ${chapters}` : ""}
 ${focus ? `ให้เน้นวัดความเข้าใจเรื่อง: ${focus}` : ""}
 
 ## กฎ (Chain-of-Thought — ทำตามลำดับก่อนตอบ)
-1) สรุปสั้นๆ ว่าจะวัดสาระสำคัญอะไรจากเนื้อหาที่ให้
-2) ร่างโจทย์แต่ละข้อ โดยมีตัวเลือกหลอกจากจุดที่นิสิตมักเข้าใจผิด
-3) ตรวจทานว่าข้อสอบสอดคล้องกับเนื้อหาที่ให้ ไม่ดึงความรู้ภายนอกที่ไม่เกี่ยวข้อง
-4) ให้เฉลยพร้อมเหตุผลทีละข้อ
+${rulesBlock}
 
 ## เนื้อหาที่อนุญาตให้ใช้ (ใช้เฉพาะนี้เป็นหลัก)
 ${material || "(ผู้ใช้ยังไม่ได้วางเนื้อหาในช่องข้อความ — ถ้ามีไฟล์แนบ ให้ใช้เนื้อหาจากไฟล์แนบเป็นหลัก; หากไม่มีทั้งข้อความและไฟล์ ให้แจ้งว่าขาดข้อมูล)"}
 
 ## รูปแบบคำตอบ
-- ข้อสอบ: ข้อ X) คำถาม ... ก) ... ข) ...
-- จากนั้น ส่วนเฉลย: ข้อ X คำตอบ ... เพราะ ...
+${[formatMcq, formatEssay].filter(Boolean).join("\n")}
 
 ## คำเตือน
 ถ้าเนื้อหาที่ให้ไม่พอ ให้บอกชัดเจนว่าขาดข้อมูลส่วนใด แทนที่จะเดาเนื้อหาวิชาเอง`;

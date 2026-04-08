@@ -26,7 +26,7 @@ export function StudioForm(props: Props) {
   } = props;
   return (
     <div className="min-w-0 flex-1 space-y-6 xl:max-w-xl">
-      <div>
+      <div className="rounded-2xl border border-neutral-200/90 bg-neutral-50/40 p-5 shadow-sm sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-wider text-brand">เลือกเครื่องมือ</p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap" role="tablist" aria-label="ประเภทเทมเพลต">
           {promptTemplates.map((t) => {
@@ -50,8 +50,8 @@ export function StudioForm(props: Props) {
         </div>
       </div>
 
-      <p className="text-sm leading-relaxed text-black">{template.description}</p>
-      <div className="space-y-5">
+      <p className="text-sm leading-relaxed text-neutral-800">{template.description}</p>
+      <div className="space-y-5 rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-sm sm:p-6">
         {fileImportError ? <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{fileImportError}</p> : null}
         {template.fields
           .filter((f) => !f.showWhen || values[f.showWhen.field] === f.showWhen.value)
