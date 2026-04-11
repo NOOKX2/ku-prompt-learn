@@ -23,30 +23,45 @@ export function isTextImportFile(file: File): boolean {
   return /\.(txt|md|csv|json|log|tex)$/i.test(name);
 }
 
-export function collectAttachmentsInFieldOrder(
+export function isPdfFile(file: { type: string; name: string }): boolean {
+  const n = file.name.toLowerCase();
+  return file.type === "application/pdf" || n.endsWith(".pdf");
+}
+
+/** รวบรวมชื่อ PDF ที่แนบต่อช่อง — ส่งเป็นข้อความใน prompt (RAG อ่านจาก Knowledge ใน Dify) */
+export function collectPdfAttachmentMeta(
   template: PromptTemplate,
   attached: Record<string, File[]>,
-): { files: File[]; meta: { fieldKey: string; name: string }[] } {
-  const files: File[] = [];
+): { fieldKey: string; name: string }[] {
   const meta: { fieldKey: string; name: string }[] = [];
   for (const field of template.fields) {
     if (field.type !== "textarea") continue;
     for (const file of attached[field.key] ?? []) {
-      files.push(file);
-      meta.push({ fieldKey: field.key, name: file.name });
+      if (isPdfFile(file)) meta.push({ fieldKey: field.key, name: file.name });
     }
   }
-  return { files, meta };
+  return meta;
 }
 
-/** ต่อท้าย prompt ที่ส่ง Dify — โมเดลมองไม่เห็นไฟล์ใน `File[]` โดยตรง จึงต้องบอกเป็นข้อความว่ามีไฟล์อะไรแนบ (โดยเฉพาะเมื่อแนบที่ช่องเช่น chapters แต่ไม่ได้พิมพ์ในช่อง) */
-export function appendAttachmentNoticeToPrompt(
+/** ต่อท้าย prompt ว่ามี PDF อะไร — ไม่ส่งไฟล์ไป API */
+export function appendRagPdfReferenceHint(
   prompt: string,
   meta: { fieldKey: string; name: string }[],
 ): string {
-  if (meta.length === 0) return prompt;
+  if (meta.length === 0) return prompt.trimEnd();
   const lines = meta.map((m) => `- ช่อง "${m.fieldKey}": ${m.name}`);
-  return `${prompt.trimEnd()}\n\n## ข้อมูลอ้างอิงที่แนบมากับคำขอนี้ (ส่งผ่าน API)\nไฟล์ต่อไปนี้ถูกส่งไปยังระบบแล้ว — ให้ถือเป็นแหล่งเนื้อหาที่อนุญาตให้ใช้ (ร่วมกับข้อความในฟอร์มถ้ามี):\n${lines.join("\n")}\n\nอย่าตอบว่าไม่มีไฟล์แนบหรือไม่มีเนื้อหาอ้างอิง หากมีรายการด้านบน — ให้อ่านและใช้เนื้อหาจากไฟล์เหล่านี้เป็นฐานสร้างคำตอบ\n`;
+  return `${prompt.trimEnd()}\n\n## เอกสารอ้างอิงที่ผู้ใช้เลือก (ชื่อไฟล์ — ไม่มีข้อความดึงได้ในเครื่อง)\n${lines.join("\n")}\nให้ใช้เนื้อหาจาก Knowledge / RAG ใน Dify ที่ตรงกับชื่อไฟล์เหล่านี้ — แอปไม่ส่งไฟล์ binary ไป API\n`;
+}
+
+/** ช่อง textarea หลักที่รวมนำเข้าข้อความ (จุดเดียวในฟอร์ม) */
+export function primaryAttachmentFieldKey(template: PromptTemplate): string | null {
+  const textareas = template.fields.filter((f) => f.type === "textarea");
+  if (textareas.length === 0) return null;
+  const prefer = ["material", "content", "syllabus", "chapters", "focus"];
+  for (const k of prefer) {
+    if (textareas.some((f) => f.key === k)) return k;
+  }
+  return textareas[0].key;
 }
 
 export function readFileAsUtf8Text(file: File): Promise<string> {
@@ -55,5 +70,15 @@ export function readFileAsUtf8Text(file: File): Promise<string> {
     reader.onload = () => resolve(String(reader.result ?? ""));
     reader.onerror = () => reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
     reader.readAsText(file, "UTF-8");
+  });
+}
+
+export function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      reader.result instanceof ArrayBuffer ? resolve(reader.result) : reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.onerror = () => reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.readAsArrayBuffer(file);
   });
 }

@@ -7,6 +7,7 @@ import { BrandLogoLink } from "@/components/brand-logo";
 const nav = [
   { href: "/", label: "หน้าแรก" },
   { href: "/studio", label: "สตูดิโอ" },
+  { href: "/exam", label: "ทำข้อสอบ" },
   { href: "/about", label: "เกี่ยวกับ" },
 ] as const;
 

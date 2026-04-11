@@ -1,6 +1,6 @@
 import { KU_FACULTY_OPTIONS } from "@/lib/ku-faculties";
 
-export type FieldType = "text" | "textarea" | "select";
+export type FieldType = "text" | "textarea" | "select" | "number";
 
 export type TemplateField = {
   key: string;
@@ -48,7 +48,7 @@ export const promptTemplates: PromptTemplate[] = [
     shortTitle: "ข้อสอบจำลอง",
     title: "สร้างข้อสอบจำลองตามรายวิชาและระดับความยาก",
     description:
-      "ใช้บทบาทอาจารย์ผู้สอบ มก. — เลือกได้ทั้งข้อปรนัย (มีตัวเลือกหลอก) และ/หรือข้ออัตนัย (เฉลยแนว/เกณฑ์ให้คะแนน)",
+      "ใช้บทบาทอาจารย์ผู้สอบ มก. — ปรนัย/อัตนัยตามจำนวนที่ตั้ง; ผลลัพธ์เป็น JSON สำหรับเปิดหน้า «ทำข้อสอบ» ในเว็บนี้",
     fields: [
       {
         key: "subject",
@@ -101,13 +101,13 @@ export const promptTemplates: PromptTemplate[] = [
       {
         key: "count",
         label: "จำนวนข้อปรนัย (0 = ไม่สร้างข้อปรนัย)",
-        type: "text",
+        type: "number",
         placeholder: "เช่น 5",
       },
       {
         key: "count_essay",
         label: "จำนวนข้ออัตนัย (0 = ไม่สร้างข้ออัตนัย)",
-        type: "text",
+        type: "number",
         placeholder: "เช่น 2",
       },
       {
@@ -160,16 +160,19 @@ export const promptTemplates: PromptTemplate[] = [
       ruleSteps.push(
         "ตรวจทานว่าข้อสอบสอดคล้องกับเนื้อหาที่ให้ ไม่ดึงความรู้ภายนอกที่ไม่เกี่ยวข้อง",
       );
+      ruleSteps.push(
+        "ผลลัพธ์สุดท้ายต้องเป็น JSON ชุดเดียวตามโครงสร้างด้านล่าง — ห้ามมีข้อความนอก JSON ห้ามห่อด้วย markdown",
+      );
       const rulesBlock = ruleSteps.map((line, i) => `${i + 1}) ${line}`).join("\n");
 
-      const formatMcq =
+      const mcqCountLine =
         nMcq > 0
-          ? `- ข้อปรนัย: ข้อ X) คำถาม … ก) … ข) … ค) … ง) …\n- เฉลยข้อปรนัย: ข้อ X คำตอบ … เพราะ …`
-          : "";
-      const formatEssay =
+          ? `แถวใน "mcq" ต้องมีครบ ${nMcq} ข้อ (แต่ละข้อ type เป็น "mcq" มี choices อย่างน้อย 4 ตัวเลือก id เป็น A B C D หรือสตริงสั้นๆ ไม่ซ้ำในข้อนั้น)`
+          : `ให้ "mcq" เป็นอาร์เรย์ว่าง []`;
+      const essayCountLine =
         nEssay > 0
-          ? `- ข้ออัตนัย: ข้อ X) (คะแนน …) คำถาม …\n- แนวเฉลย/เกณฑ์ให้คะแนน: ข้อ X …`
-          : "";
+          ? `แถวใน "essay" ต้องมีครบ ${nEssay} ข้อ (type เป็น "essay")`
+          : `ให้ "essay" เป็นอาร์เรย์ว่าง []`;
 
       return `คุณเป็นอาจารย์ผู้สอนรายวิชา "${subject}"${facultyMajor ? ` (${facultyMajor})` : ""} มหาวิทยาลัยเกษตรศาสตร์
 
@@ -184,11 +187,30 @@ ${rulesBlock}
 ## เนื้อหาที่อนุญาตให้ใช้ (ใช้เฉพาะนี้เป็นหลัก)
 ${material || "(ผู้ใช้ยังไม่ได้วางเนื้อหาในช่องข้อความ — ถ้ามีไฟล์แนบ ให้ใช้เนื้อหาจากไฟล์แนบเป็นหลัก; หากไม่มีทั้งข้อความและไฟล์ ให้แจ้งว่าขาดข้อมูล)"}
 
-## รูปแบบคำตอบ
-${[formatMcq, formatEssay].filter(Boolean).join("\n")}
+## รูปแบบผลลัพธ์ (บังคับ — นำไปแสดงบนเว็บ KU PromptLearn)
+ตอบเป็น **JSON เดียวที่ parse ได้** เท่านั้น — ไม่ใส่ \`\`\`json ไม่มีคำอธิบายก่อน/หลัง
+
+**สำคัญมาก — จำนวนข้อ:** อาร์เรย์ \`mcq\` ต้องมีความยาว **เท่ากับ ${nMcq} รายการพอดี** และอาร์เรย์ \`essay\` ต้องมีความยาว **เท่ากับ ${nEssay} รายการพอดี** — **ห้ามส่งแค่ตัวอย่าง 1 ข้อ** หรือโครงร่างว่างแทนข้อสอบจริง  
+ก่อนส่งให้ตรวจในใจว่า \`mcq.length === ${nMcq}\` และ \`essay.length === ${nEssay}\`
+
+คีย์ระดับบน: examVersion, title, subject, difficulty, instructions, mcq, essay, answerKey  
+แต่ละองค์ประกอบใน mcq มีฟิลด์: id, type ("mcq"), prompt, choices (อย่างน้อย 4 ตัวเลือก), correctChoiceId  
+แต่ละองค์ประกอบใน essay มีฟิลด์: id, type ("essay"), prompt, maxScore (ถ้ามี), rubricHint, modelAnswer  
+subject ใช้ ${JSON.stringify(subject)} และ difficulty ใช้ ${JSON.stringify(difficulty)} หรือข้อความสอดคล้อง
+
+ตัวอย่างรูปแบบ **หนึ่งข้อปรนัย** (ต้องทำซ้ำให้ครบ ${nMcq} ข้อ โดย id ไม่ซ้ำ เช่น mcq1 … mcq${nMcq > 0 ? String(nMcq) : "0"}):
+{"id":"mcq1","type":"mcq","prompt":"…","choices":[{"id":"A","label":"…"},{"id":"B","label":"…"},{"id":"C","label":"…"},{"id":"D","label":"…"}],"correctChoiceId":"A"}
+
+${nEssay > 0 ? `ตัวอย่างรูปแบบหนึ่งข้ออัตนัย (ต้องมีครบ ${nEssay} ข้อ โดย id ไม่ซ้ำ):\n{"id":"e1","type":"essay","prompt":"…","maxScore":5,"rubricHint":"…","modelAnswer":"…"}\n` : ""}answerKey.mcq ต้องมีคีย์ตรงกับ id แต่ละข้อปรนัยและค่าเป็น id ข้อที่ถูก
+
+ข้อกำหนดจำนวน (ทบทวน):
+- ${mcqCountLine}
+- ${essayCountLine}
+- ทุกข้อต้องมี "id" ไม่ซ้ำกันในทั้งชุด; "correctChoiceId" ต้องตรงกับ id ในข้อนั้น
+- "answerKey.mcq" ต้องสอดคล้องกับ correctChoiceId ของแต่ละข้อปรนัย
 
 ## คำเตือน
-ถ้าเนื้อหาที่ให้ไม่พอ ให้บอกชัดเจนว่าขาดข้อมูลส่วนใด แทนที่จะเดาเนื้อหาวิชาเอง`;
+ถ้าเนื้อหาที่ให้ไม่พอ ให้ตอบเป็น JSON ที่มี "examVersion":"1", "title":"ไม่สามารถสร้างข้อสอบได้", "mcq":[], "essay":[], "instructions":"อธิบายว่าขาดข้อมูลส่วนใด" — ห้ามเดาเนื้อหาวิชา`;
     },
   },
   {

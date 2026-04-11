@@ -1,30 +1,46 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { EXAM_JSON_STORAGE_KEY } from "@/lib/exam-json";
 import { StudioForm } from "@/components/prompt-studio/studio-form";
 import { StudioPreview } from "@/components/prompt-studio/studio-preview";
 import { usePromptStudio } from "@/components/prompt-studio/use-prompt-studio";
 
 export function PromptStudio() {
+  const router = useRouter();
   const s = usePromptStudio();
+
+  const openExam = () => {
+    try {
+      sessionStorage.setItem(EXAM_JSON_STORAGE_KEY, s.answer);
+    } catch {
+      /* quota / private mode */
+    }
+    router.push("/exam");
+  };
 
   return (
     <div className="flex flex-col gap-10 text-black xl:flex-row xl:items-start xl:gap-8">
       <StudioForm
         templateId={s.templateId}
         template={s.template}
+        attachmentFieldKey={s.attachmentFieldKey}
         values={s.values}
         fieldAttachments={s.fieldAttachments}
+        importSlots={s.importSlots}
         fileImportError={s.ui.fileImportError}
-        textFileInputRefs={s.textFileInputRefs}
-        attachInputRefs={s.attachInputRefs}
+        pdfImportBusy={s.ui.pdfImportBusy}
+        unifiedFileInputRef={s.unifiedFileInputRef}
         onSelectTemplate={s.selectTemplate}
         onFieldChange={s.setField}
-        onTextImport={s.handleTextFileImport}
-        onAttach={s.handleAttachFiles}
-        onRemoveAttachment={s.removeAttachment}
+        onUnifiedFiles={(files) => {
+          if (s.attachmentFieldKey) void s.handleUnifiedFiles(s.attachmentFieldKey, files);
+        }}
+        onRemoveImportSlot={s.removeImportSlot}
       />
 
       <StudioPreview
+        templateId={s.templateId}
         promptText={s.promptText}
         answer={s.answer}
         loading={s.loading}
@@ -38,6 +54,8 @@ export function PromptStudio() {
         onStop={s.stop}
         onDownloadPdf={() => void s.downloadPdf()}
         onCopyAnswer={() => void s.copyAnswer()}
+        canOpenExam={s.templateId === "mock-exam"}
+        onOpenExam={openExam}
       />
     </div>
   );

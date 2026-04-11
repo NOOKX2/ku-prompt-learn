@@ -18,12 +18,12 @@ export default function StudioPage() {
           สร้างและรันคำสั่ง
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-black">
-          กรอกข้อมูลด้านล่าง แล้วกดรัน — ระบบจะส่งคำสั่งไปยัง Dify (Chat API)
-          ฝั่งเซิร์ฟเวอร์ และแสดงคำตอบสตรีมในหน้านี้
+          กรอกข้อมูลด้านล่าง แล้วกดรัน — ระบบส่งแค่ข้อความไป Dify (Workflow / Chat ตาม env)
+          เอกสาร PDF ฯลฯ อัปโหลดที่ Knowledge ใน Dify แล้วใช้ RAG ตามคำสั่ง
         </p>
         <p className="mt-2 font-mono text-[11px] text-neutral-600">
-          ต้องตั้งค่า DIFY_API_KEY / DIFY_API_URL และ DIFY_APP_MODE (chat หรือ completion)
-          ให้ตรงกับประเภทแอปใน Dify — ถ้า error ลองเปิด{" "}
+          ตั้ง DIFY_API_KEY / DIFY_API_URL / DIFY_APP_MODE (workflow แนะนำถ้าใช้ Knowledge retrieval)
+          ให้ตรงกับแอปใน Dify — ทดสอบการตั้งค่า: เปิด{" "}
           <a
             href="/api/generate"
             className="text-brand underline"

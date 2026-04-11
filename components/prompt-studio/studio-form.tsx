@@ -1,29 +1,79 @@
 import type { PromptTemplate } from "@/lib/prompt-templates";
 import { promptTemplates } from "@/lib/prompt-templates";
-import type { MutableRefObject } from "react";
-import { ATTACH_ACCEPT, inputClass, MAX_ATTACH_PER_FIELD, TEXT_IMPORT_ACCEPT } from "./constants";
+import type { ImportSlot } from "@/components/prompt-studio/import-blocks";
+import { useEffect, useState, type MutableRefObject } from "react";
+import {
+  MAX_ATTACH_PER_FIELD,
+  UNIFIED_FILE_ACCEPT,
+  inputClass,
+} from "@/lib/constants";
 import { formatBytes } from "./helpers";
 
 type Props = {
   templateId: string;
   template: PromptTemplate;
+  attachmentFieldKey: string | null;
   values: Record<string, string>;
   fieldAttachments: Record<string, File[]>;
+  importSlots: ImportSlot[];
   fileImportError: string | null;
-  textFileInputRefs: MutableRefObject<Record<string, HTMLInputElement | null>>;
-  attachInputRefs: MutableRefObject<Record<string, HTMLInputElement | null>>;
+  pdfImportBusy: boolean;
+  unifiedFileInputRef: MutableRefObject<HTMLInputElement | null>;
   onSelectTemplate: (id: string) => void;
   onFieldChange: (key: string, value: string) => void;
-  onTextImport: (fieldKey: string, files: FileList | null) => void;
-  onAttach: (fieldKey: string, files: FileList | null) => void;
-  onRemoveAttachment: (fieldKey: string, index: number) => void;
+  onUnifiedFiles: (files: FileList | null) => void;
+  onRemoveImportSlot: (id: string) => void;
 };
 
 export function StudioForm(props: Props) {
   const {
-    templateId, template, values, fieldAttachments, fileImportError, textFileInputRefs, attachInputRefs,
-    onSelectTemplate, onFieldChange, onTextImport, onAttach, onRemoveAttachment,
+    templateId,
+    template,
+    attachmentFieldKey,
+    values,
+    fieldAttachments,
+    importSlots,
+    fileImportError,
+    pdfImportBusy,
+    unifiedFileInputRef,
+    onSelectTemplate,
+    onFieldChange,
+    onUnifiedFiles,
+    onRemoveImportSlot,
   } = props;
+
+  const slotsForField = attachmentFieldKey
+    ? importSlots.filter((s) => s.fieldKey === attachmentFieldKey)
+    : [];
+
+  /** ชื่อชุดล่าสุดที่เลือกจาก file picker (รวม PDF ที่ดึงข้อความแล้วไม่มีใน attachList) */
+  const [recentPickLabel, setRecentPickLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRecentPickLabel(null);
+  }, [templateId]);
+
+  const attachList = attachmentFieldKey ? (fieldAttachments[attachmentFieldKey] ?? []) : [];
+  const attachLabel =
+    attachList.length === 0
+      ? "เลือกไฟล์…"
+      : attachList.length === 1
+        ? attachList[0].name
+        : `${attachList[0].name} +${attachList.length - 1} ไฟล์`;
+
+  const fileButtonLabel =
+    attachList.length > 0
+      ? attachLabel
+      : slotsForField.length > 0
+        ? slotsForField.length === 1
+          ? slotsForField[0].fileName
+          : `${slotsForField[0].fileName} +${slotsForField.length - 1} ไฟล์`
+        : recentPickLabel ?? "เลือกไฟล์…";
+
+  const primaryFieldLabel =
+    attachmentFieldKey &&
+    template.fields.find((f) => f.key === attachmentFieldKey)?.label;
+
   return (
     <div className="min-w-0 flex-1 space-y-6 xl:max-w-xl">
       <div className="rounded-2xl border border-neutral-200/90 bg-neutral-50/40 p-5 shadow-sm sm:p-6">
@@ -53,6 +103,11 @@ export function StudioForm(props: Props) {
       <p className="text-sm leading-relaxed text-neutral-800">{template.description}</p>
       <div className="space-y-5 rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-sm sm:p-6">
         {fileImportError ? <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{fileImportError}</p> : null}
+        {pdfImportBusy ? (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+            กำลังอ่านข้อความจาก PDF… (อาจใช้เวลาสักครู่)
+          </p>
+        ) : null}
         {template.fields
           .filter((f) => !f.showWhen || values[f.showWhen.field] === f.showWhen.value)
           .map((f) => (
@@ -61,73 +116,109 @@ export function StudioForm(props: Props) {
                 {f.label}{f.required ? <span className="text-red-600"> *</span> : null}
               </label>
               {f.type === "textarea" ? (
-                <TextareaField
-                  fieldKey={f.key}
-                  label={f.label}
+                <textarea
+                  id={f.key}
                   value={values[f.key] ?? ""}
+                  onChange={(e) => onFieldChange(f.key, e.target.value)}
                   placeholder={f.placeholder}
                   rows={f.key === "material" ? 6 : 4}
-                  attachments={fieldAttachments[f.key] ?? []}
-                  textInputRef={(el) => { textFileInputRefs.current[f.key] = el; }}
-                  attachInputRef={(el) => { attachInputRefs.current[f.key] = el; }}
-                  onValueChange={(value) => onFieldChange(f.key, value)}
-                  onTextImport={(files) => onTextImport(f.key, files)}
-                  onAttach={(files) => onAttach(f.key, files)}
-                  onRemoveAttachment={(idx) => onRemoveAttachment(f.key, idx)}
+                  className={`${inputClass} resize-y`}
                 />
               ) : f.type === "select" ? (
                 <select id={f.key} value={values[f.key] ?? ""} onChange={(e) => onFieldChange(f.key, e.target.value)} className={inputClass}>
                   {(f.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
+              ) : f.type === "number" ? (
+                <input
+                  id={f.key}
+                  type="number"
+                  min={0}
+                  max={99}
+                  step={1}
+                  inputMode="numeric"
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => onFieldChange(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                  className={`${inputClass} font-mono tabular-nums`}
+                />
               ) : (
                 <input id={f.key} type="text" value={values[f.key] ?? ""} onChange={(e) => onFieldChange(f.key, e.target.value)} placeholder={f.placeholder} className={inputClass} />
               )}
             </div>
           ))}
-      </div>
-    </div>
-  );
-}
 
-type TextareaProps = {
-  fieldKey: string;
-  label: string;
-  value: string;
-  placeholder?: string;
-  rows: number;
-  attachments: File[];
-  textInputRef: (el: HTMLInputElement | null) => void;
-  attachInputRef: (el: HTMLInputElement | null) => void;
-  onValueChange: (value: string) => void;
-  onTextImport: (files: FileList | null) => void;
-  onAttach: (files: FileList | null) => void;
-  onRemoveAttachment: (index: number) => void;
-};
-
-function TextareaField(props: TextareaProps) {
-  const { fieldKey, label, value, placeholder, rows, attachments, textInputRef, attachInputRef, onValueChange, onTextImport, onAttach, onRemoveAttachment } = props;
-  const isUpload = attachments.length > 0;
-  const attachedLabel = isUpload ? (attachments.length === 1 ? attachments[0].name : `${attachments[0].name} +${attachments.length - 1} ไฟล์`) : "แนบ PDF / รูป (ส่งไป Dify)";
-  return (
-    <div className="space-y-2">
-      <textarea id={fieldKey} value={value} onChange={(e) => onValueChange(e.target.value)} placeholder={placeholder} rows={rows} className={`${inputClass} resize-y`} />
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <input ref={textInputRef} type="file" id={`${fieldKey}-text-file`} className="sr-only" multiple accept={TEXT_IMPORT_ACCEPT} aria-label={`นำเข้าข้อความจากไฟล์สำหรับ ${label}`} onChange={(e) => onTextImport(e.target.files)} />
-          <button type="button" onClick={() => document.getElementById(`${fieldKey}-text-file`)?.click()} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 transition hover:border-gray-300 hover:bg-gray-50">นำเข้าข้อความ (.txt / .md …)</button>
-          <input ref={attachInputRef} type="file" id={`${fieldKey}-attach-file`} className="sr-only" multiple accept={ATTACH_ACCEPT} aria-label={`แนบ PDF หรือรูปไป Dify สำหรับ ${label}`} onChange={(e) => onAttach(e.target.files)} />
-          <button type="button" onClick={() => document.getElementById(`${fieldKey}-attach-file`)?.click()} className={`max-w-full truncate rounded-lg border px-2.5 py-1.5 text-xs font-medium text-black transition ${isUpload ? "border-brand bg-brand-muted" : "border-brand/40 bg-brand-muted hover:border-brand hover:bg-brand-muted/80"}`} title={isUpload ? attachments.map((x) => x.name).join(", ") : undefined}>{attachedLabel}</button>
-        </div>
-        <p className="text-xs text-neutral-500">ข้อความ: ไฟล์ .txt / .md / .json สูงสุด 1 MB ต่อไฟล์ — ต่อท้ายในช่องด้านบน · แนบจริง: PDF / รูป สูงสุด {MAX_ATTACH_PER_FIELD} ไฟล์ต่อช่อง (ไฟล์ละไม่เกิน 15 MB) ส่งผ่าน API ของ Dify ตอนกดรัน</p>
-        {attachments.length > 0 ? (
-          <ul className="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-neutral-50/80 p-2 text-xs text-neutral-800">
-            {attachments.map((file, idx) => (
-              <li key={`${file.name}-${file.size}-${idx}`} className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate">{file.name} <span className="text-neutral-500">({formatBytes(file.size)})</span></span>
-                <button type="button" onClick={() => onRemoveAttachment(idx)} className="shrink-0 rounded border border-gray-300 px-1.5 py-0.5 text-[11px] hover:bg-white">ลบ</button>
-              </li>
-            ))}
-          </ul>
+        {attachmentFieldKey ? (
+          <div className="space-y-2 border-t border-neutral-200 pt-5">
+            <p className="text-sm font-medium text-black">นำเข้าไฟล์</p>
+            <p className="text-xs text-neutral-600">
+              เลือก<strong className="font-medium">หลายไฟล์พร้อมกัน</strong>ได้ (Ctrl / ⌘ ค้างแล้วคลิก) · เนื้อหาจากไฟล์จะถูก<strong className="font-medium">เก็บแยก</strong>และส่งครบตอนกด «รันคำสั่ง» — ช่อง «{primaryFieldLabel ?? attachmentFieldKey}» ใช้พิมพ์เพิ่มเติมเท่านั้น ไม่แสดงข้อความยาวจาก PDF · PDF สแกนที่ดึงไม่ได้จะอ้างชื่อให้ RAG (สูงสุด {MAX_ATTACH_PER_FIELD} ไฟล์แบบนั้น) · ลบรายไฟล์จากรายการด้านล่าง
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={unifiedFileInputRef}
+                type="file"
+                id="unified-file-input"
+                className="sr-only"
+                multiple
+                accept={UNIFIED_FILE_ACCEPT}
+                aria-label="นำเข้าไฟล์ข้อความหรือ PDF"
+                onChange={(e) => {
+                  const fl = e.target.files;
+                  if (fl && fl.length > 0) {
+                    const names = Array.from(fl).map((f) => f.name);
+                    setRecentPickLabel(
+                      names.length === 1 ? names[0] : `${names[0]} +${names.length - 1} ไฟล์`,
+                    );
+                  }
+                  onUnifiedFiles(fl);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById("unified-file-input")?.click()}
+                className={`max-w-full min-w-0 truncate rounded-lg border px-3 py-2 text-sm font-medium text-black transition ${attachList.length || recentPickLabel || slotsForField.length
+                    ? "border-brand bg-brand-muted"
+                    : "border-brand/40 bg-brand-muted hover:border-brand hover:bg-brand-muted/80"
+                  }`}
+                title={
+                  attachList.length
+                    ? attachList.map((x) => x.name).join(", ")
+                    : slotsForField.length
+                      ? slotsForField.map((s) => s.fileName).join(", ")
+                      : recentPickLabel ?? undefined
+                }
+              >
+                {fileButtonLabel}
+              </button>
+            </div>
+            {slotsForField.length > 0 ? (
+              <ul className="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-neutral-50/80 p-2 text-xs text-neutral-800">
+                {slotsForField.map((slot) => {
+                  const kindLabel =
+                    slot.kind === "text"
+                      ? "ข้อความ"
+                      : slot.kind === "pdf-embedded"
+                        ? "PDF → ข้อความ"
+                        : "PDF → ชื่อ (RAG)";
+                  return (
+                    <li key={slot.id} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        <span className="text-neutral-500">[{kindLabel}]</span> {slot.fileName}{" "}
+                        <span className="text-neutral-500">({formatBytes(slot.sizeBytes)})</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveImportSlot(slot.id)}
+                        className="shrink-0 rounded border border-gray-300 px-1.5 py-0.5 text-[11px] hover:bg-white"
+                      >
+                        ลบ
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>
