@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DifyUploadedFileRef } from "@/lib/dify/types";
 import { downloadDifyAnswerAsPdf } from "@/lib/dify-answer-pdf";
 import { getTemplateById, promptTemplates } from "@/lib/prompt-templates";
 import { useGenerateStream } from "@/hooks/use-generate-stream";
@@ -9,6 +10,7 @@ import {
   type ImportSlot,
 } from "@/components/prompt-studio/import-blocks";
 import {
+  appendDifyWorkflowUploadedPdfHint,
   appendRagPdfReferenceHint,
   collectPdfAttachmentMeta,
   defaultValues,
@@ -37,6 +39,8 @@ export function usePromptStudio() {
   const [importBodies, setImportBodies] = useState<Record<string, string>>({});
   const importSlotsRef = useRef(importSlots);
   importSlotsRef.current = importSlots;
+  const [pdfHandling, setPdfHandling] = useState<"upload" | "extract">("extract");
+  const [knowledgeUploadEnabled, setKnowledgeUploadEnabled] = useState(false);
   const [ui, setUi] = useState<UiState>({
     fileImportError: null,
     pdfExportError: null,
@@ -45,6 +49,26 @@ export function usePromptStudio() {
   });
   const fieldAttachmentsRef = useRef(fieldAttachments);
   fieldAttachmentsRef.current = fieldAttachments;
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/studio-config")
+      .then((r) => r.json())
+      .then((d: { pdfHandling?: string; knowledgeUploadEnabled?: boolean }) => {
+        if (cancelled) return;
+        setPdfHandling(d.pdfHandling === "upload" ? "upload" : "extract");
+        setKnowledgeUploadEnabled(Boolean(d.knowledgeUploadEnabled));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPdfHandling("extract");
+          setKnowledgeUploadEnabled(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const promptClipboard = useClipboardFeedback();
   const answerClipboard = useClipboardFeedback();
 
@@ -143,8 +167,24 @@ export function usePromptStudio() {
     if (!p) return;
     setUi((prev) => ({ ...prev, pdfExportError: null }));
     const meta = collectPdfAttachmentMeta(template, fieldAttachmentsRef.current);
-    const promptToSend = appendRagPdfReferenceHint(promptBase, meta);
-    await runStream(promptToSend);
+    let promptToSend = appendRagPdfReferenceHint(promptBase, meta);
+    const workflowFiles: DifyUploadedFileRef[] = importSlotsRef.current
+      .filter((s) => s.kind === "pdf-dify-upload" && Boolean(s.uploadFileId?.trim()))
+      .map((s) => ({
+        type: "document" as const,
+        transfer_method: "local_file" as const,
+        upload_file_id: s.uploadFileId as string,
+      }));
+    if (workflowFiles.length > 0) {
+      const uploadNames = importSlotsRef.current
+        .filter((s) => s.kind === "pdf-dify-upload")
+        .map((s) => s.fileName);
+      promptToSend = appendDifyWorkflowUploadedPdfHint(promptToSend, uploadNames);
+    }
+    await runStream(
+      promptToSend,
+      workflowFiles.length > 0 ? workflowFiles : undefined,
+    );
   }, [promptText, promptBase, template, runStream]);
 
   const copyPrompt = useCallback(async () => {
@@ -178,6 +218,8 @@ export function usePromptStudio() {
       setUi((prev) => ({ ...prev, pdfImportBusy: busy })),
     registerImports,
     getFieldAttachmentCount,
+    pdfHandling,
+    knowledgeUploadEnabled,
   });
 
   return {
@@ -187,6 +229,8 @@ export function usePromptStudio() {
     values,
     fieldAttachments,
     importSlots,
+    pdfHandling,
+    knowledgeUploadEnabled,
     promptText,
     answer,
     loading,

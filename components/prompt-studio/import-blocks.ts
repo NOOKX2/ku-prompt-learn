@@ -3,7 +3,9 @@ export type ImportSlot = {
   fieldKey: string;
   fileName: string;
   sizeBytes: number;
-  kind: "text" | "pdf-embedded" | "pdf-rag";
+  kind: "text" | "pdf-embedded" | "pdf-rag" | "pdf-dify-upload";
+  /** อัปโหลดไป Dify แล้ว — ส่งเป็น workflowFiles ตอนรัน */
+  uploadFileId?: string;
   /** อ้างอิงเดียวกับรายการใน fieldAttachments สำหรับลบ */
   ragFile?: File;
 };

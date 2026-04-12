@@ -3,6 +3,7 @@ import {
   explainStreamConnectionError,
   withErrorOrigin,
 } from "@/lib/dify-errors";
+import { stringifyWorkflowOutputFallback } from "@/lib/dify/workflow-output-fallback";
 
 /**
  * อ่านสตรีม SSE จาก Dify
@@ -109,6 +110,10 @@ export function extractStringFromOutputs(outputs: unknown, depth = 0): string | 
     "structured_output",
     "output_json",
     "value",
+    /** Dify workflow ปลายทางบางชุดตั้งชื่อตัวแปรออกแบบนี้ */
+    "final_output",
+    "llm_output",
+    "assistant_output",
   ]) {
     const v = o[key];
     if (typeof v === "string" && isUsableText(v)) return v.trim();
@@ -122,21 +127,34 @@ export function extractStringFromOutputs(outputs: unknown, depth = 0): string | 
   return null;
 }
 
+/** ดึงข้อความจาก outputs/output/result — รวม JSON.stringify ถ้าเป็น object ล้วน (สตรีม + blocking) */
+function extractOutputsTextWithJsonFallback(
+  outputs: unknown,
+  output?: unknown,
+  result?: unknown,
+): string | null {
+  return (
+    extractStringFromOutputs(outputs) ??
+    extractStringFromOutputs(output) ??
+    extractStringFromOutputs(result) ??
+    stringifyWorkflowOutputFallback(outputs) ??
+    stringifyWorkflowOutputFallback(output) ??
+    stringifyWorkflowOutputFallback(result)
+  );
+}
+
 function extractWorkflowFinishedText(parsed: DifyStreamEvent): string | null {
   if (parsed.event !== "workflow_finished") return null;
   const data = parsed.data;
   if (data == null || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
+  const resultStr =
+    typeof d.result === "string" && isUsableText(d.result) ? d.result.trim() : null;
   let text =
-    extractStringFromOutputs(d.outputs) ??
-    extractStringFromOutputs(d.output) ??
-    (typeof d.result === "string" && isUsableText(d.result) ? d.result.trim() : null);
+    extractOutputsTextWithJsonFallback(d.outputs, d.output, resultStr ?? d.result);
   if (!text && d.data != null && typeof d.data === "object") {
     const inner = d.data as Record<string, unknown>;
-    text =
-      extractStringFromOutputs(inner.outputs) ??
-      extractStringFromOutputs(inner.output) ??
-      extractStringFromOutputs(inner);
+    text = extractOutputsTextWithJsonFallback(inner.outputs, inner.output, inner.result);
   }
   return text;
   /* ห้ามเรียก extractStringFromOutputs(d) กับทั้ง event — จะไปเก็บ id/task_id เป็น "คำตอบ" */
@@ -156,11 +174,7 @@ function extractTextChunkData(data: unknown): string | null {
 function extractNodeOutputsText(data: unknown): string | null {
   if (data == null || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
-  return (
-    extractStringFromOutputs(d.outputs) ??
-    extractStringFromOutputs(d.output) ??
-    extractStringFromOutputs(d.result)
-  );
+  return extractOutputsTextWithJsonFallback(d.outputs, d.output, d.result);
 }
 
 function extractChunk(
@@ -213,6 +227,22 @@ function extractChunk(
   }
 
   return null;
+}
+
+/** ตั้ง `DIFY_DEBUG_UPSTREAM_SSE=1` ใน .env แล้วดูเทอร์มินัล `next dev` — จะพิมพ์แต่ละบรรทัด `data: {...}` ดิบจาก Dify ก่อนแปลงเป็นข้อความ */
+function upstreamSseDebugEnabled(): boolean {
+  return (
+    typeof process !== "undefined" && process.env.DIFY_DEBUG_UPSTREAM_SSE === "1"
+  );
+}
+
+function logUpstreamSsePayload(rawPayload: string, parsed: DifyStreamEvent): void {
+  if (!upstreamSseDebugEnabled()) return;
+  const ev = parsed.event ?? "(no event)";
+  const n = rawPayload.length;
+  const line =
+    n > 8000 ? `${rawPayload.slice(0, 8000)}…(+${String(n - 8000)} chars)` : rawPayload;
+  console.log(`[Dify upstream SSE] event=${ev}\n${line}`);
 }
 
 function createSseParser(
@@ -301,6 +331,7 @@ function createSseParser(
                 continue;
               }
 
+              logUpstreamSsePayload(payload, parsed);
               if (handleEvent(parsed)) return;
             }
           }
@@ -312,6 +343,7 @@ function createSseParser(
               if (payload && payload !== "[DONE]") {
                 try {
                   const parsed = JSON.parse(payload) as DifyStreamEvent;
+                  logUpstreamSsePayload(payload, parsed);
                   if (handleEvent(parsed)) return;
                 } catch {
                   /* ignore */

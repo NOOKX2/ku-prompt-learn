@@ -11,7 +11,7 @@ services:
       - .:/app                # เชื่อมโค้ดในเครื่องเข้า Container (Hot Reload)
       - /app/node_modules     # ป้องกัน node_modules ตีกัน
     env_file:
-      - .env                  # สำคัญ: ต้องมี DIFY_API_KEY ในนี้!
+      - .env                  # DIFY_API_KEY — ถ้าใช้ Knowledge API ใส่ DIFY_DATASET_ID + DIFY_DATASET_API_KEY ด้วย
     environment:
       - NODE_ENV=development
     # รันโหมด dev เพื่อให้ Cursor และ Next.js ทำงานร่วมกันได้

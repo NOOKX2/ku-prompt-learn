@@ -1,27 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isAbortLike } from "@/lib/dify-errors";
+import type { DifyUploadedFileRef } from "@/lib/dify/types";
 import { streamGenerate } from "@/services/generate-service";
 
 /**
  * สถานะการเรียก `/api/generate` แบบสตรีม — แยกจากฟอร์มเทมเพลตเพื่อให้อ่านโค้ดง่าย
  */
+
 export function useGenerateStream() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** กันคลิกรันซ้ำ / unmount: finally ของรันเก่าอย่า setLoading หรือล้าง abortRef ของรันใหม่ */
+  const generationRef = useRef(0);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(
+    () => () => {
+      generationRef.current += 1;
+      abortRef.current?.abort();
+    },
+    [],
+  );
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
-  const run = useCallback(async (prompt: string) => {
+  const run = useCallback(async (prompt: string, workflowFiles?: DifyUploadedFileRef[]) => {
     const p = prompt.trim();
-    console.log(p);
     if (!p) return;
+    const gen = ++generationRef.current;
     setError(null);
     setAnswer("");
     setLoading(true);
@@ -33,16 +44,25 @@ export function useGenerateStream() {
         prompt: p,
         signal: ac.signal,
         onChunk: setAnswer,
+        workflowFiles,
       });
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
+      if (generationRef.current !== gen) return;
+      if (isAbortLike(e)) {
         setError("หยุดแล้ว");
       } else {
-        setError(e instanceof Error ? e.message : "เกิดข้อผิดพลาด");
+        const msg = e instanceof Error ? e.message : "เกิดข้อผิดพลาด";
+        console.error("[useGenerateStream] run ล้ม — ดู [generate-client] ด้านบนในคอนโซลว่าขั้นไหน", {
+          message: msg,
+          error: e,
+        });
+        setError(msg);
       }
     } finally {
-      setLoading(false);
-      abortRef.current = null;
+      if (generationRef.current === gen) {
+        setLoading(false);
+        abortRef.current = null;
+      }
     }
   }, []);
 

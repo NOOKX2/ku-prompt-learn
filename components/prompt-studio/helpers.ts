@@ -4,6 +4,7 @@ export function defaultValues(t: PromptTemplate): Record<string, string> {
   const o: Record<string, string> = {};
   for (const f of t.fields) {
     if (f.type === "select" && f.options?.length) o[f.key] = f.options[0].value;
+    else if (t.id === "mock-exam" && f.key === "count") o[f.key] = "5";
     else o[f.key] = "";
   }
   return o;
@@ -51,6 +52,19 @@ export function appendRagPdfReferenceHint(
   if (meta.length === 0) return prompt.trimEnd();
   const lines = meta.map((m) => `- ช่อง "${m.fieldKey}": ${m.name}`);
   return `${prompt.trimEnd()}\n\n## เอกสารอ้างอิงที่ผู้ใช้เลือก (ชื่อไฟล์ — ไม่มีข้อความดึงได้ในเครื่อง)\n${lines.join("\n")}\nให้ใช้เนื้อหาจาก Knowledge / RAG ใน Dify ที่ตรงกับชื่อไฟล์เหล่านี้ — แอปไม่ส่งไฟล์ binary ไป API\n`;
+}
+
+/**
+ * เมื่อส่ง PDF ผ่าน Dify `files/upload` + workflow inputs — ข้อความใน prompt หลักมักมีแค่บรรทัดอ้างอิงสั้นๆ
+ * โมเดลจึงเข้าใจผิดว่า "ไม่มีเนื้อหา" แม้ workflow จะส่งเอกสารเข้ามาในขั้นอื่น — ต่อท้ายคำสั่งให้ชัด
+ */
+export function appendDifyWorkflowUploadedPdfHint(
+  prompt: string,
+  fileNames: string[],
+): string {
+  if (fileNames.length === 0) return prompt.trimEnd();
+  const list = fileNames.map((n) => `- ${n}`).join("\n");
+  return `${prompt.trimEnd()}\n\n---\n## ไฟล์ PDF ที่ส่งผ่าน Dify (แอปอัปโหลดแล้ว)\nรายการชื่อไฟล์:\n${list}\n\n**คำสั่งสำคัญ:** ไฟล์เหล่านี้ถูกอัปโหลดไป Dify และถูกส่งเป็นอินพุตไฟล์ของ workflow (เช่น \`upload_file\`) แล้ว — **ให้ใช้เนื้อหาวิชาที่คุณได้รับจากการอ่าน/ประมวลผลไฟล์ใน workflow หรือจาก Knowledge ที่ workflow ดึงมา** เป็นฐานสร้างข้อสอบ\n- **ห้าม**ตัดสินว่า "ไม่มีเนื้อหา" เพียงเพราะช่อง «เนื้อหาอ้างอิง» ในฟอร์มสั้นหรือมีแต่ชื่อไฟล์ — ช่องนั้นไม่ได้ใส่ข้อความ PDF เต็มโดยออกแบบ\n- ถ้าคุณได้รับข้อความ/สรุปจากเอกสารจริงในบริบทจาก Dify แล้ว ให้ใช้เป็นหลักตามกฎ «ห้ามเดาเนื้อหาวิชา»\n- ถ้าคุณ **ไม่ได้รับ**เนื้อหาเอกสารจาก workflow เลย (มีแต่ข้อความนี้) จึงค่อยตอบตามกฎขาดข้อมูล และแนะนำให้ตรวจว่า workflow โหนดอ่านเอกสาร/ดึง Knowledge ส่งเข้าโมเดลหรือยัง\n`;
 }
 
 /** ช่อง textarea หลักที่รวมนำเข้าข้อความ (จุดเดียวในฟอร์ม) */

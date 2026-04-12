@@ -26,6 +26,10 @@ type Args = {
   setPdfImportBusy?: (busy: boolean) => void;
   registerImports: (entries: ImportEntry[]) => void;
   getFieldAttachmentCount: (fieldKey: string) => number;
+  /** จาก GET /api/studio-config — upload = ส่ง PDF ไป Dify แทนดึงข้อความในเครื่อง */
+  pdfHandling: "upload" | "extract";
+  /** มี DIFY_DATASET_ID + DIFY_DATASET_API_KEY — โหมด extract จะเรียก /api/dify-knowledge-upload หลังดึงข้อความ */
+  knowledgeUploadEnabled: boolean;
 };
 
 function newImportId(): string {
@@ -39,6 +43,8 @@ export function useFileHandlers(args: Args) {
     setPdfImportBusy,
     registerImports,
     getFieldAttachmentCount,
+    pdfHandling,
+    knowledgeUploadEnabled,
   } = args;
   const unifiedFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -76,7 +82,92 @@ export function useFileHandlers(args: Args) {
         return true;
       };
 
-      const pushPdfFile = async (file: File): Promise<boolean> => {
+      const pushPdfDifyUpload = async (file: File): Promise<boolean> => {
+        if (file.size > MAX_ATTACH_BYTES) {
+          setFileImportError(
+            `ไฟล์ "${file.name}" ใหญ่เกิน ${formatBytes(MAX_ATTACH_BYTES)}`,
+          );
+          return false;
+        }
+        const fd = new FormData();
+        fd.append("file", file, file.name);
+        let res: Response;
+        try {
+          res = await fetch("/api/dify-upload", { method: "POST", body: fd });
+        } catch {
+          setFileImportError(`อัปโหลด "${file.name}" ไปเซิร์ฟเวอร์ไม่สำเร็จ`);
+          return false;
+        }
+        let data: {
+          id?: string;
+          error?: string;
+          knowledge?: { documentId: string; batch: string } | null;
+        };
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          setFileImportError(`อัปโหลด "${file.name}" — อ่านคำตอบไม่ได้`);
+          return false;
+        }
+        if (!res.ok) {
+          setFileImportError(data.error ?? `อัปโหลดไป Dify ไม่สำเร็จ (HTTP ${res.status})`);
+          return false;
+        }
+        if (!data.id) {
+          setFileImportError(`อัปโหลด "${file.name}" — ไม่ได้รับ id จาก Dify`);
+          return false;
+        }
+        const id = newImportId();
+        const bodyHint = data.knowledge
+          ? `(อัปโหลด workflow + Knowledge: ${file.name})`
+          : `(อ้างอิงไฟล์ที่อัปโหลดไป Dify: ${file.name})`;
+        entries.push({
+          slot: {
+            id,
+            fieldKey: primaryFieldKey,
+            fileName: file.name,
+            sizeBytes: file.size,
+            kind: "pdf-dify-upload",
+            uploadFileId: data.id,
+          },
+          body: bodyHint,
+        });
+        return true;
+      };
+
+      /** โหมด extract: ส่งไฟล์เข้า Knowledge แยก (โหมด upload ทำใน /api/dify-upload แล้ว) */
+      const pushKnowledgeOnlyAfterExtract = async (file: File): Promise<boolean> => {
+        if (!knowledgeUploadEnabled) return true;
+        const fd = new FormData();
+        fd.append("file", file, file.name);
+        let res: Response;
+        try {
+          res = await fetch("/api/dify-knowledge-upload", { method: "POST", body: fd });
+        } catch {
+          setFileImportError(`อัปโหลด "${file.name}" เข้า Knowledge ไม่สำเร็จ (เครือข่าย)`);
+          return false;
+        }
+        let data: { documentId?: string; error?: string };
+        try {
+          data = (await res.json()) as { documentId?: string; error?: string };
+        } catch {
+          setFileImportError(`อัปโหลด "${file.name}" เข้า Knowledge — อ่านคำตอบไม่ได้`);
+          return false;
+        }
+        if (!res.ok) {
+          setFileImportError(
+            data.error ?? `เพิ่มเข้า Knowledge ไม่สำเร็จ (HTTP ${res.status})`,
+          );
+          return false;
+        }
+        if (!data.documentId) {
+          setFileImportError(`อัปโหลด "${file.name}" เข้า Knowledge — ไม่ได้รับ documentId`);
+          return false;
+        }
+        return true;
+      };
+
+      const pushPdfExtract = async (file: File): Promise<boolean> => {
         if (file.size > MAX_ATTACH_BYTES) {
           setFileImportError(
             `ไฟล์ "${file.name}" ใหญ่เกิน ${formatBytes(MAX_ATTACH_BYTES)}`,
@@ -136,6 +227,7 @@ export function useFileHandlers(args: Args) {
             body,
           });
         }
+        if (!(await pushKnowledgeOnlyAfterExtract(file))) return false;
         return true;
       };
 
@@ -149,7 +241,11 @@ export function useFileHandlers(args: Args) {
           if (isTextImportFile(file)) {
             if (!(await pushTextFile(file))) return;
           } else if (isPdfFile(file)) {
-            if (!(await pushPdfFile(file))) return;
+            if (pdfHandling === "upload") {
+              if (!(await pushPdfDifyUpload(file))) return;
+            } else if (!(await pushPdfExtract(file))) {
+              return;
+            }
           } else {
             setFileImportError(
               `ไฟล์ "${file.name}" ไม่รองรับ — ใช้ .txt / .md / .json หรือ .pdf`,
@@ -184,11 +280,13 @@ export function useFileHandlers(args: Args) {
       if (el) el.value = "";
     },
     [
-      registerImports,
       getFieldAttachmentCount,
+      pdfHandling,
+      registerImports,
       setFieldAttachments,
       setFileImportError,
       setPdfImportBusy,
+      knowledgeUploadEnabled,
     ],
   );
 

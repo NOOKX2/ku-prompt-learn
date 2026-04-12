@@ -321,7 +321,9 @@ function isMcqQuestion(x: unknown): x is ExamMcqQuestion {
   if (typeof o.id !== "string" || typeof o.prompt !== "string") return false;
   if (typeof o.correctChoiceId !== "string") return false;
   if (!Array.isArray(o.choices) || o.choices.length < 2) return false;
-  return o.choices.every(isMcqChoice);
+  if (!o.choices.every(isMcqChoice)) return false;
+  const ids = new Set((o.choices as ExamMcqChoice[]).map((c) => c.id));
+  return ids.has(o.correctChoiceId);
 }
 
 function isEssayQuestion(x: unknown): x is ExamEssayQuestion {
@@ -395,7 +397,7 @@ export function parseExamJson(raw: string): ParseExamResult {
     return {
       ok: false,
       error:
-        "โครงสร้าง JSON ไม่ตรงสคีมา — ต้องมี examVersion (รับ \"1\" หรือ \"1.0\"), title, mcq[] — essay ถ้าไม่มีจะใส่ [] ให้ — แต่ละข้อปรนัยต้องมี choices อย่างน้อย 2 ตัวเลือกและ correctChoiceId",
+        "โครงสร้าง JSON ไม่ตรงสคีมา — ต้องมี examVersion (รับ \"1\" หรือ \"1.0\"), title, mcq[] — essay ถ้าไม่มีจะใส่ [] ให้ — แต่ละข้อปรนัยต้องมี choices อย่างน้อย 2 ตัวเลือก (แต่ละตัวมี id, label) และ correctChoiceId ต้องตรงกับ id ตัวเลือกข้อนั้น",
     };
   }
   return { ok: true, exam: parsed };

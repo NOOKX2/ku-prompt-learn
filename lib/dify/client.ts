@@ -1,3 +1,5 @@
+import type { DifyUploadedFileRef } from "@/lib/dify/types";
+
 export type AppMode = "chat" | "completion" | "workflow";
 
 export function resolveAppMode(): AppMode {
@@ -56,9 +58,13 @@ export class DifyClient {
   private baseUrl: string;
 
   /**
-   * ส่งแค่ข้อความเข้า workflow/chat — เอกสารอ้างอิงอยู่ที่ Knowledge / RAG ใน Dify
+   * ส่งข้อความเข้า workflow/chat — ถ้ามี workflowFiles จะ merge เข้า inputs ตาม DIFY_WORKFLOW_FILE_INPUT_KEY (ส่ง PDF ไป Dify แทนการยัดใน prompt)
    */
-  async execute(prompt: string, modeOverride?: AppMode) {
+  async execute(
+    prompt: string,
+    modeOverride?: AppMode,
+    workflowFiles?: DifyUploadedFileRef[],
+  ) {
     const mode = modeOverride ?? resolveAppMode();
     const promptKey = process.env.DIFY_PROMPT_INPUT_KEY?.trim() || "query";
 
@@ -72,6 +78,15 @@ export class DifyClient {
       }
     }
     inputs = { ...inputs, [promptKey]: prompt };
+
+    const fileInputKey = process.env.DIFY_WORKFLOW_FILE_INPUT_KEY?.trim() || "upload_file";
+    if (workflowFiles && workflowFiles.length > 0 && mode === "workflow") {
+      const existing = inputs[fileInputKey];
+      const list: unknown[] = Array.isArray(existing) ? [...existing] : [];
+      list.push(...workflowFiles);
+      inputs[fileInputKey] = list;
+    }
+
     mergeEmptyFileListInputs(inputs);
 
     const path =

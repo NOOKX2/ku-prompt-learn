@@ -30,6 +30,8 @@ export function PromptStudio() {
         importSlots={s.importSlots}
         fileImportError={s.ui.fileImportError}
         pdfImportBusy={s.ui.pdfImportBusy}
+        pdfHandling={s.pdfHandling}
+        knowledgeUploadEnabled={s.knowledgeUploadEnabled}
         unifiedFileInputRef={s.unifiedFileInputRef}
         onSelectTemplate={s.selectTemplate}
         onFieldChange={s.setField}

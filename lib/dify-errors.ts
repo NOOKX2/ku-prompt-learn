@@ -29,6 +29,13 @@ export function withErrorOrigin(origin: string, message: string): string {
   return `[${origin}]\n${message.trim()}`;
 }
 
+/** fetch/read ถูกยกเลิกด้วย AbortController — ไม่ใช่เครือข่ายล้ม */
+export function isAbortLike(e: unknown): boolean {
+  if (e instanceof DOMException && e.name === "AbortError") return true;
+  if (e instanceof Error && e.name === "AbortError") return true;
+  return false;
+}
+
 /** ข้อความช่วยตามรหัสที่ Dify ส่งกลับ */
 const DIFY_HINTS_TH: Record<string, string> = {
   app_unavailable:

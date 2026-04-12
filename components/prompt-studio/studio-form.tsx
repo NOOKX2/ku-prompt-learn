@@ -18,6 +18,10 @@ type Props = {
   importSlots: ImportSlot[];
   fileImportError: string | null;
   pdfImportBusy: boolean;
+  /** จาก /api/studio-config — upload = ส่งไฟล์ไป Dify เป็น RAG/workflow */
+  pdfHandling: "upload" | "extract";
+  /** ตั้ง DIFY_DATASET_ID + DIFY_DATASET_API_KEY — อัปโหลดเข้า Knowledge ด้วย */
+  knowledgeUploadEnabled: boolean;
   unifiedFileInputRef: MutableRefObject<HTMLInputElement | null>;
   onSelectTemplate: (id: string) => void;
   onFieldChange: (key: string, value: string) => void;
@@ -35,6 +39,8 @@ export function StudioForm(props: Props) {
     importSlots,
     fileImportError,
     pdfImportBusy,
+    pdfHandling,
+    knowledgeUploadEnabled,
     unifiedFileInputRef,
     onSelectTemplate,
     onFieldChange,
@@ -105,7 +111,13 @@ export function StudioForm(props: Props) {
         {fileImportError ? <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{fileImportError}</p> : null}
         {pdfImportBusy ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
-            กำลังอ่านข้อความจาก PDF… (อาจใช้เวลาสักครู่)
+            {pdfHandling === "upload"
+              ? knowledgeUploadEnabled
+                ? "กำลังอัปโหลด PDF ไป Dify และ Knowledge… (อาจใช้เวลาสักครู่)"
+                : "กำลังอัปโหลด PDF ไป Dify… (อาจใช้เวลาสักครู่)"
+              : knowledgeUploadEnabled
+                ? "กำลังอ่านข้อความจาก PDF และเพิ่มเข้า Knowledge… (อาจใช้เวลาสักครู่)"
+                : "กำลังอ่านข้อความจาก PDF… (อาจใช้เวลาสักครู่)"}
           </p>
         ) : null}
         {template.fields
@@ -151,7 +163,23 @@ export function StudioForm(props: Props) {
           <div className="space-y-2 border-t border-neutral-200 pt-5">
             <p className="text-sm font-medium text-black">นำเข้าไฟล์</p>
             <p className="text-xs text-neutral-600">
-              เลือก<strong className="font-medium">หลายไฟล์พร้อมกัน</strong>ได้ (Ctrl / ⌘ ค้างแล้วคลิก) · เนื้อหาจากไฟล์จะถูก<strong className="font-medium">เก็บแยก</strong>และส่งครบตอนกด «รันคำสั่ง» — ช่อง «{primaryFieldLabel ?? attachmentFieldKey}» ใช้พิมพ์เพิ่มเติมเท่านั้น ไม่แสดงข้อความยาวจาก PDF · PDF สแกนที่ดึงไม่ได้จะอ้างชื่อให้ RAG (สูงสุด {MAX_ATTACH_PER_FIELD} ไฟล์แบบนั้น) · ลบรายไฟล์จากรายการด้านล่าง
+              {pdfHandling === "upload" ? (
+                <>
+                  เลือก<strong className="font-medium">หลายไฟล์พร้อมกัน</strong>ได้ (Ctrl / ⌘ ค้างแล้วคลิก) · PDF จะ<strong className="font-medium">อัปโหลดไป Dify</strong>
+                  {knowledgeUploadEnabled ? (
+                    <> และ<strong className="font-medium">เพิ่มเข้า Knowledge base</strong>ที่ตั้งค่าไว้</>
+                  ) : null}
+                  แล้วส่งเป็นอินพุต workflow ตอนกด «รันคำสั่ง» — ช่อง «{primaryFieldLabel ?? attachmentFieldKey}» ใช้พิมพ์เพิ่มเติมเท่านั้น · ลบรายไฟล์จากรายการด้านล่าง
+                </>
+              ) : (
+                <>
+                  เลือก<strong className="font-medium">หลายไฟล์พร้อมกัน</strong>ได้ (Ctrl / ⌘ ค้างแล้วคลิก) · เนื้อหาจากไฟล์จะถูก<strong className="font-medium">เก็บแยก</strong>และส่งครบตอนกด «รันคำสั่ง» — ช่อง «{primaryFieldLabel ?? attachmentFieldKey}» ใช้พิมพ์เพิ่มเติมเท่านั้น ไม่แสดงข้อความยาวจาก PDF
+                  {knowledgeUploadEnabled ? (
+                    <> · PDF จะ<strong className="font-medium">เพิ่มเข้า Knowledge base</strong>ที่ตั้งค่าไว้ด้วย</>
+                  ) : null}
+                  {" "}· PDF สแกนที่ดึงไม่ได้จะอ้างชื่อให้ RAG (สูงสุด {MAX_ATTACH_PER_FIELD} ไฟล์แบบนั้น) · ลบรายไฟล์จากรายการด้านล่าง
+                </>
+              )}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -199,7 +227,9 @@ export function StudioForm(props: Props) {
                       ? "ข้อความ"
                       : slot.kind === "pdf-embedded"
                         ? "PDF → ข้อความ"
-                        : "PDF → ชื่อ (RAG)";
+                        : slot.kind === "pdf-dify-upload"
+                          ? "PDF → Dify"
+                          : "PDF → ชื่อ (RAG)";
                   return (
                     <li key={slot.id} className="flex items-center justify-between gap-2">
                       <span className="min-w-0 truncate">

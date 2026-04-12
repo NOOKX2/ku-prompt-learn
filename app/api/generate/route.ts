@@ -40,7 +40,7 @@ export async function GET() {
   return Response.json({
     ok: true,
     message:
-      "พร้อมรับ POST JSON { \"prompt\": \"...\" } — เอกสารอ้างอิงใช้ Knowledge/RAG ใน Dify ไม่แนบไฟล์ผ่าน API",
+      "พร้อมรับ POST JSON { \"prompt\": \"...\", \"workflowFiles\": [...] } — อัปโหลด PDF ที่ POST /api/dify-upload (เพิ่มเข้า Knowledge ด้วยถ้าตั้ง DIFY_DATASET_ID + DIFY_DATASET_API_KEY) แล้วส่ง id มาใน workflowFiles เมื่อตั้ง DIFY_PDF_HANDLING=upload; ไม่ส่ง workflowFiles = ดึงข้อความในเบราว์เซอร์ตามเดิม",
     appMode,
     responseMode,
     runtimeIsBun: isBun,
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     process.env.DIFY_API_URL?.trim() || "https://api.dify.ai/v1";
 
   try {
-    const { prompt } = await parseIncomingRequest(req);
+    const { prompt, workflowFiles } = await parseIncomingRequest(req);
     if (!prompt) {
       return Response.json(
         {
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     }
 
     const client = new DifyClient(apiKey, baseUrl);
-    const upstream = await client.execute(prompt);
+    const upstream = await client.execute(prompt, undefined, workflowFiles);
 
     if (!upstream.ok) {
       const errText = await upstream.text();
