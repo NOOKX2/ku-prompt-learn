@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Sarabun } from "next/font/google";
-import { SiteShell } from "@/components/site-shell";
+import { AuthSessionProvider } from "@/components/auth-session-provider";
 import "./globals.css";
 
 const sarabun = Sarabun({
@@ -33,8 +33,8 @@ export default function RootLayout({
       lang="th"
       className={`${sarabun.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-white font-sans text-black antialiased">
-        <SiteShell>{children}</SiteShell>
+      <body className="flex min-h-full min-h-[100dvh] flex-col bg-neutral-100 font-sans text-black antialiased">
+        <AuthSessionProvider>{children}</AuthSessionProvider>
       </body>
     </html>
   );

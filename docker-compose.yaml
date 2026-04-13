@@ -1,19 +1,67 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: ku_promptlearn_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-ku_prompt_learn}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
       target: builder
     container_name: ku_promptlearn_app
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "3000:3000"
     volumes:
-      - .:/app                # เชื่อมโค้ดในเครื่องเข้า Container (Hot Reload)
-      - /app/node_modules     # ป้องกัน node_modules ตีกัน
+      - .:/app
+      - /app/node_modules
     env_file:
-      - .env                  # DIFY_API_KEY — ถ้าใช้ Knowledge API ใส่ DIFY_DATASET_ID + DIFY_DATASET_API_KEY ด้วย
+      - .env
     environment:
-      - NODE_ENV=development
-    # รันโหมด dev เพื่อให้ Cursor และ Next.js ทำงานร่วมกันได้
-    command: sh -c "bun install && bun dev"
+      NODE_ENV: development
+      # NextAuth — ต้องมีในไฟล์ .env (ไม่ใช่แค่ .env.local) มิฉะนั้น compose/env_file จะไม่ส่งเข้า container
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env e.g. openssl rand -base64 32}
+      # ในเครือข่าย Docker ชี้ service `db` พอร์ตภายใน 5432 เสมอ
+      DB_HOST: db
+      DB_PORT: "5432"
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-ku_prompt_learn}
+    command: sh -c "bun install && bunx prisma migrate deploy && bun dev"
     restart: unless-stopped
+
+  studio:
+    image: oven/bun:1
+    container_name: ku_prompt_learn_prisma_studio
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "bun install && bunx prisma studio --hostname 0.0.0.0 --port 5555 --browser none"
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-ku_prompt_learn}
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+volumes:
+  postgres_data:

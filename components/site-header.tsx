@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AuthNav } from "@/components/auth-nav";
 import { BrandLogoLink } from "@/components/brand-logo";
 
 const nav = [
@@ -22,13 +23,14 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-[1fr_auto] grid-rows-[auto_auto] items-center gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[auto_1fr_auto] sm:grid-rows-1 sm:gap-4 sm:px-6 sm:py-3.5">
-        <div className="col-start-1 row-start-1 min-w-0">
+      {/* แถบเดียว — ไม่แยกแถวโลโก้/ลิงก์แบบ grid สองแถว (เคยดูเหมือน navbar ซ้อน) */}
+      <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-2 px-5 py-3 sm:gap-4 sm:px-6 sm:py-3.5">
+        <div className="shrink-0">
           <BrandLogoLink />
         </div>
 
         <nav
-          className="col-span-2 col-start-1 row-start-2 flex flex-wrap justify-center gap-1 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-center"
+          className="flex min-h-0 min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           aria-label="หลัก"
         >
           {nav.map((item) => {
@@ -40,7 +42,7 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={linkClass(active)}
+                className={`shrink-0 ${linkClass(active)}`}
               >
                 {item.label}
               </Link>
@@ -48,12 +50,15 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <Link
-          href="/studio"
-          className="col-start-2 row-start-1 justify-self-end rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
-        >
-          เปิดสตูดิโอ
-        </Link>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <AuthNav />
+          <Link
+            href="/studio"
+            className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-neutral-800 sm:px-4 sm:text-sm"
+          >
+            เปิดสตูดิโอ
+          </Link>
+        </div>
       </div>
     </header>
   );

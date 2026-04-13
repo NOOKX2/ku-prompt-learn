@@ -4,6 +4,8 @@ FROM oven/bun:1 AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
+# postinstall รัน `prisma generate` — ต้องมี schema ก่อน bun install
+COPY prisma/schema.prisma prisma/schema.prisma
 # ถ้า build ล้มเหลวที่ขั้นนี้ ให้รัน `bun install` ใน repo แล้ว commit bun.lock ให้ตรงกับ package.json
 RUN bun install --frozen-lockfile
 
