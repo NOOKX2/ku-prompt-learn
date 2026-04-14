@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DifyUploadedFileRef } from "@/lib/dify/types";
 import { downloadDifyAnswerAsPdf } from "@/lib/dify-answer-pdf";
@@ -27,6 +28,7 @@ type UiState = {
 };
 
 export function usePromptStudio() {
+  const { data: session, status: sessionStatus } = useSession();
   const [templateId, setTemplateId] = useState(promptTemplates[0].id);
   const template = useMemo(
     () => getTemplateById(templateId) ?? promptTemplates[0],
@@ -181,11 +183,28 @@ export function usePromptStudio() {
         .map((s) => s.fileName);
       promptToSend = appendDifyWorkflowUploadedPdfHint(promptToSend, uploadNames);
     }
-    await runStream(
+    const finalText = await runStream(
       promptToSend,
       workflowFiles.length > 0 ? workflowFiles : undefined,
     );
-  }, [promptText, promptBase, template, runStream]);
+
+    if (
+      sessionStatus === "authenticated" &&
+      session?.user?.id &&
+      templateId === "mock-exam" &&
+      finalText?.trim()
+    ) {
+      try {
+        await fetch("/api/exams", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rawAnswer: finalText }),
+        });
+      } catch {
+        /* บันทึกข้อสอบไม่บังคับ — ไม่รบกวนการใช้สตูดิโอ */
+      }
+    }
+  }, [promptText, promptBase, template, runStream, templateId, session?.user?.id, sessionStatus]);
 
   const copyPrompt = useCallback(async () => {
     await promptClipboard.copy(promptText);

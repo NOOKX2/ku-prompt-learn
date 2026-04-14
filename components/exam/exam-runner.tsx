@@ -1,11 +1,16 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ExamBundle } from "@/lib/exam-json";
 
-type Props = { exam: ExamBundle };
+type Props = {
+  exam: ExamBundle;
+  /** ถ้ามี — หลังส่งคำตอบจะบันทึกคะแนนปรนัย (เปอร์เซ็นต์ 0–100) ลงฐานข้อมูล */
+  examRecordId?: string;
+};
 
-export function ExamRunner({ exam }: Props) {
+export function ExamRunner({ exam, examRecordId }: Props) {
+  const scorePatchSent = useRef(false);
   const [mcqPick, setMcqPick] = useState<Record<string, string>>({});
   const [essayDraft, setEssayDraft] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -23,11 +28,24 @@ export function ExamRunner({ exam }: Props) {
     return total ? { correct, total } : null;
   }, [exam.mcq, mcqPick, submitted]);
 
+  useEffect(() => {
+    if (!examRecordId || !submitted || !mcqScore || mcqScore.total === 0) return;
+    if (scorePatchSent.current) return;
+    scorePatchSent.current = true;
+    const pct = Math.round((100 * mcqScore.correct) / mcqScore.total);
+    void fetch(`/api/exams/${examRecordId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score: pct }),
+    }).catch(() => {});
+  }, [examRecordId, submitted, mcqScore]);
+
   const reset = useCallback(() => {
     setMcqPick({});
     setEssayDraft({});
     setSubmitted(false);
     setShowKey(false);
+    scorePatchSent.current = false;
   }, []);
 
   return (

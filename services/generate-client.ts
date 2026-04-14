@@ -16,8 +16,8 @@ export type StreamGenerateArgs = {
   workflowFiles?: DifyUploadedFileRef[];
 };
 
-/** Client → POST `/api/generate` (JSON) — ล็อกขั้นตอนใน console เมื่อ error */
-export async function streamGenerate(args: StreamGenerateArgs): Promise<void> {
+/** Client → POST `/api/generate` (JSON) — คืนข้อความรวมหลังอ่านสตรีมจบ — ล็อกขั้นตอนใน console เมื่อ error */
+export async function streamGenerate(args: StreamGenerateArgs): Promise<string> {
   const { prompt, signal, onChunk, workflowFiles } = args;
 
   const payload: { prompt: string; workflowFiles?: DifyUploadedFileRef[] } = { prompt };
@@ -107,10 +107,9 @@ export async function streamGenerate(args: StreamGenerateArgs): Promise<void> {
       error: e,
     });
     if (accumulated.trim()) {
-      onChunk(
-        `${accumulated}\n\n[แจ้งจากแอป] ${withErrorOrigin(ErrorOrigin.clientReadResponseStream, detail)} — แสดงเฉพาะข้อความที่โหลดได้แล้ว`,
-      );
-      return;
+      const next = `${accumulated}\n\n[แจ้งจากแอป] ${withErrorOrigin(ErrorOrigin.clientReadResponseStream, detail)} — แสดงเฉพาะข้อความที่โหลดได้แล้ว`;
+      onChunk(next);
+      return next;
     }
     throw new Error(withErrorOrigin(ErrorOrigin.clientReadResponseStream, detail));
   } finally {
@@ -134,17 +133,19 @@ export async function streamGenerate(args: StreamGenerateArgs): Promise<void> {
       devHint:
         "เปิด DevTools → Network → คลิก request /api/generate → Response ดูว่ามี SSE (data: {...}) หรือไม่",
     });
-    onChunk(
-      [
-        withErrorOrigin(
-          ErrorOrigin.clientReadResponseStream,
-          "เชื่อมต่อสำเร็จแต่ไม่ได้รับข้อความจากสตรีม (ความยาวรวม 0 หลังอ่านจบ)",
-        ),
-        "",
-        "ถ้าใช้ Workflow + RAG: ตรวจว่าโหนด Knowledge retrieval ผูกกับ Knowledge ที่มีเอกสาร และตัวแปรออกสุดท้ายเป็นข้อความ/JSON",
-        "• เปิด streaming ที่โหนด LLM (ถ้ามี)",
-        "• รัน Trace ใน Dify ว่ามีข้อความใน outputs ของโหนดสุดท้ายหรือไม่",
-      ].join("\n"),
-    );
+    const next = [
+      withErrorOrigin(
+        ErrorOrigin.clientReadResponseStream,
+        "เชื่อมต่อสำเร็จแต่ไม่ได้รับข้อความจากสตรีม (ความยาวรวม 0 หลังอ่านจบ)",
+      ),
+      "",
+      "ถ้าใช้ Workflow + RAG: ตรวจว่าโหนด Knowledge retrieval ผูกกับ Knowledge ที่มีเอกสาร และตัวแปรออกสุดท้ายเป็นข้อความ/JSON",
+      "• เปิด streaming ที่โหนด LLM (ถ้ามี)",
+      "• รัน Trace ใน Dify ว่ามีข้อความใน outputs ของโหนดสุดท้ายหรือไม่",
+    ].join("\n");
+    onChunk(next);
+    return next;
   }
+
+  return accumulated;
 }

@@ -31,7 +31,7 @@ export function useGenerateStream() {
 
   const run = useCallback(async (prompt: string, workflowFiles?: DifyUploadedFileRef[]) => {
     const p = prompt.trim();
-    if (!p) return;
+    if (!p) return undefined;
     const gen = ++generationRef.current;
     setError(null);
     setAnswer("");
@@ -40,14 +40,15 @@ export function useGenerateStream() {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      await streamGenerate({
+      const text = await streamGenerate({
         prompt: p,
         signal: ac.signal,
         onChunk: setAnswer,
         workflowFiles,
       });
+      return text;
     } catch (e) {
-      if (generationRef.current !== gen) return;
+      if (generationRef.current !== gen) return undefined;
       if (isAbortLike(e)) {
         setError("หยุดแล้ว");
       } else {
@@ -58,6 +59,7 @@ export function useGenerateStream() {
         });
         setError(msg);
       }
+      return undefined;
     } finally {
       if (generationRef.current === gen) {
         setLoading(false);

@@ -58,7 +58,9 @@ export class DifyClient {
   private baseUrl: string;
 
   /**
-   * ส่งข้อความเข้า workflow/chat — ถ้ามี workflowFiles จะ merge เข้า inputs ตาม DIFY_WORKFLOW_FILE_INPUT_KEY (ส่ง PDF ไป Dify แทนการยัดใน prompt)
+   * ส่งข้อความเข้า workflow/chat — ถ้ามี workflowFiles:
+   * - workflow: merge เข้า `inputs[DIFY_WORKFLOW_FILE_INPUT_KEY]`
+   * - chat: ใส่ `files` ใน body (โมเดลจะไม่เห็นไฟล์ถ้าไม่ใส่ แม้อัปโหลดแล้ว)
    */
   async execute(
     prompt: string,
@@ -115,6 +117,14 @@ export class DifyClient {
           : process.env.DIFY_SEND_QUERY !== "0";
     if (sendQuery) {
       payload.query = prompt;
+    }
+
+    /**
+     * Chat App: แนบไฟล์ที่อัปโหลดแล้ว (local_file) — ถ้าไม่ใส่ โมเดลจะไม่เห็น PDF แม้ผู้ใช้อัปโหลดในแอป
+     * (โหมด workflow ใส่ไฟล์ผ่าน `inputs[fileInputKey]` ด้านบน ไม่ใช้ฟิลด์นี้)
+     */
+    if (workflowFiles && workflowFiles.length > 0 && mode === "chat") {
+      payload.files = workflowFiles;
     }
 
     return fetch(`${this.baseUrl}${path}`, {

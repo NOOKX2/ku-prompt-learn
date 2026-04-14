@@ -1,3 +1,5 @@
+import { resolveAppMode } from "@/lib/dify/client";
+
 export const runtime = "nodejs";
 
 /**
@@ -12,9 +14,10 @@ export async function GET() {
   const ds = process.env.DIFY_DATASET_ID?.trim();
   const dk = process.env.DIFY_DATASET_API_KEY?.trim();
   const knowledgeUploadEnabled = Boolean(ds && dk);
+  const difyAppMode = resolveAppMode();
 
   return Response.json(
-    { pdfHandling, knowledgeUploadEnabled },
+    { pdfHandling, knowledgeUploadEnabled, difyAppMode },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
