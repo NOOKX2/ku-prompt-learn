@@ -4,9 +4,9 @@ services:
     container_name: ku_promptlearn_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-ku_prompt_learn}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -41,7 +41,10 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-ku_prompt_learn}
-    command: sh -c "bun install && bunx prisma migrate deploy && bun dev"
+    # dev:docker ใช้ --webpack เพื่อหลีกเลี่ยง Turbopack + Prisma client ที่ prisma.summary หาย
+    # ถ้า migrate ค้าง P3009 (failed 20260414183000_add_summary): เช็คว่ามีตาราง Summary หรือยัง แล้วรัน
+    # `docker compose run --rm app bun run db:migrate:resolve-summary-applied` หรือ ...rolled-back ตามจริง
+    command: sh -c "bun install && bunx prisma migrate deploy && bunx prisma generate && bun run dev:docker"
     restart: unless-stopped
 
   studio:

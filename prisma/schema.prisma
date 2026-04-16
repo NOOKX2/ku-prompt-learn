@@ -19,6 +19,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   exams         Exam[]
+  summaries     Summary[]
 }
 
 /** ข้อสอบที่สร้างจาก Dify (เก็บ JSON เต็ม + คะแนนหลังทำข้อสอบ) */
@@ -29,6 +30,19 @@ model Exam {
   /** ก้อนข้อมูลจาก Dify — เช่น { rawAnswer, exam? } */
   content   Json
   score     Int?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/** สรุปเนื้อหาที่ได้จาก Dify (เก็บ JSON เต็ม) */
+model Summary {
+  id        String   @id @default(cuid())
+  userId    String
+  topic     String
+  content   Json
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

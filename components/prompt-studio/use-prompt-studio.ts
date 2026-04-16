@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DifyUploadedFileRef } from "@/lib/dify/types";
 import { downloadDifyAnswerAsPdf } from "@/lib/dify-answer-pdf";
 import { getTemplateById, promptTemplates } from "@/lib/prompt-templates";
+import { parseSimplifySummaryJson } from "@/lib/simplify-summary";
 import { useGenerateStream } from "@/hooks/use-generate-stream";
 import {
   stripAllKuImportBlocks,
@@ -202,6 +203,28 @@ export function usePromptStudio() {
         });
       } catch {
         /* บันทึกข้อสอบไม่บังคับ — ไม่รบกวนการใช้สตูดิโอ */
+      }
+    }
+
+    if (
+      sessionStatus === "authenticated" &&
+      session?.user?.id &&
+      templateId === "gen-z-simplify" &&
+      finalText?.trim()
+    ) {
+      const parsed = parseSimplifySummaryJson(finalText);
+      console.log('parse', parsed);
+      if (parsed.ok) {
+        console.log('parse ok');
+        try {
+          await fetch("/api/summaries", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rawAnswer: finalText }),
+          });
+        } catch {
+          /* บันทึกสรุปไม่บังคับ — ไม่รบกวนการใช้สตูดิโอ */
+        }
       }
     }
   }, [promptText, promptBase, template, runStream, templateId, session?.user?.id, sessionStatus]);

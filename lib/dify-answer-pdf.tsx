@@ -48,12 +48,32 @@ function defaultFilename(): string {
   return `ku-promptlearn-dify-${stamp}.pdf`;
 }
 
+function extractJsonCandidate(text: string): string | null {
+  const t = text.trim();
+  if (!t) return null;
+  if (t.startsWith("{") || t.startsWith("[")) return t;
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(t);
+  return fenced?.[1]?.trim() || null;
+}
+
+function formatForPdf(text: string): string {
+  const candidate = extractJsonCandidate(text);
+  if (!candidate) return text.trim();
+  try {
+    const parsed = JSON.parse(candidate) as unknown;
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return text.trim();
+  }
+}
+
 export async function downloadDifyAnswerAsPdf(text: string): Promise<void> {
   const trimmed = text.trim();
   if (!trimmed) return;
 
   ensureThaiFont();
-  const blob = await pdf(<AnswerPdfDocument text={trimmed} />).toBlob();
+  const pdfText = formatForPdf(trimmed);
+  const blob = await pdf(<AnswerPdfDocument text={pdfText} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

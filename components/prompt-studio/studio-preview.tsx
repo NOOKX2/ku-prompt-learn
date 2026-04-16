@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { parseExamJson } from "@/lib/exam-json";
 import { ExamAnswerSummary } from "@/components/prompt-studio/exam-answer-summary";
+import { JsonAnswerSummary } from "@/components/prompt-studio/json-answer-summary";
 import {
   isLikelyDifyUserPlaceholder,
   isLikelyPromptEcho,
@@ -29,6 +30,7 @@ type Props = {
 };
 
 type PromptSection = { title: string; body: string };
+type JsonValue = null | boolean | number | string | JsonValue[] | { [k: string]: JsonValue };
 
 /** ส่วนเนื้อหาอ้างอิงยาว — พับไว้ให้อ่านโครงคำสั่งก่อน */
 const COLLAPSE_SECTION_BODY_CHARS = 3500;
@@ -46,6 +48,25 @@ function parsePromptSections(raw: string): { intro: string; sections: PromptSect
     sections.push({ title, body });
   }
   return { intro, sections };
+}
+
+function parseGenericJson(text: string): JsonValue | null {
+  const t = text.trim();
+  if (!t) return null;
+  try {
+    return JSON.parse(t) as JsonValue;
+  } catch {
+    /* continue */
+  }
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(t);
+  if (fenced?.[1]) {
+    try {
+      return JSON.parse(fenced[1].trim()) as JsonValue;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function PromptReadableView({ text }: { text: string }) {
@@ -125,8 +146,9 @@ export function StudioPreview(props: Props) {
   } = props;
 
   const subjectMissing = promptText.includes('รายวิชา ""');
-  const charCount = promptText.length;
+  const answerCharCount = answer.length;
   const examParse = useMemo(() => parseExamJson(answer), [answer]);
+  const genericJson = useMemo(() => parseGenericJson(answer), [answer]);
   const isMockExamTemplate = templateId === "mock-exam";
   const echoWarning = useMemo(
     () => Boolean(answer.trim() && isLikelyPromptEcho(promptText, answer)),
@@ -142,23 +164,23 @@ export function StudioPreview(props: Props) {
       <div className="flex flex-col overflow-hidden rounded-2xl border-2 border-black/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 bg-linear-to-r from-brand-muted/50 to-white px-4 py-3">
           <div className="min-w-0 space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-brand">คำสั่งที่จะส่งไปยังโมเดล</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-brand">ผลลัพธ์ที่ตอบกลับจาก Dify</span>
             <p className="text-xs text-neutral-600">
-              แบ่งเป็นหัวข้อให้อ่านง่าย — ข้อความนี้คือสิ่งที่ระบบส่งไป Dify ตอนกดรัน
-              {charCount > 0 ? (
+              แสดงผลตอบกลับล่าสุดจาก Dify (แบบดิบ)
+              {answerCharCount > 0 ? (
                 <span className="text-neutral-500">
                   {" "}
-                  · <span className="font-mono tabular-nums">{charCount.toLocaleString("th-TH")}</span> ตัวอักษร
+                  · <span className="font-mono tabular-nums">{answerCharCount.toLocaleString("th-TH")}</span> ตัวอักษร
                 </span>
               ) : null}
             </p>
           </div>
           <button
             type="button"
-            onClick={onCopyPrompt}
+            onClick={onCopyAnswer}
             className="shrink-0 rounded-lg border border-black/15 bg-white px-3 py-2 text-xs font-medium text-black shadow-sm hover:bg-neutral-50"
           >
-            {copiedPrompt ? "คัดลอกแล้ว" : "คัดลอกข้อความทั้งก้อน"}
+            {copiedAnswer ? "คัดลอกแล้ว" : "คัดลอกคำตอบ"}
           </button>
         </div>
 
@@ -174,7 +196,9 @@ export function StudioPreview(props: Props) {
         ) : null}
 
         <div className="max-h-[min(52vh,560px)] min-h-[160px] overflow-auto bg-neutral-50/50 p-4 [scrollbar-gutter:stable] sm:p-5">
-          <PromptReadableView text={promptText} />
+          <PromptReadableView
+            text={answer || (loading ? "กำลังรอข้อความจาก Dify…" : "กด «รันคำสั่ง» เพื่อให้ Dify ส่งคำตอบกลับ")}
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-t border-black/10 bg-white px-4 py-3">
@@ -273,6 +297,19 @@ export function StudioPreview(props: Props) {
             {examParse.ok ? (
               <>
                 <ExamAnswerSummary exam={examParse.exam} />
+                <details className="group border-t border-neutral-100">
+                  <summary className="cursor-pointer list-none px-4 py-3 text-xs font-medium text-neutral-600 hover:bg-neutral-50 sm:px-5 [&::-webkit-details-marker]:hidden">
+                    <span className="text-brand group-open:hidden">แสดงข้อความดิบ (JSON) สำหรับคัดลอก / ส่งต่อ</span>
+                    <span className="hidden text-brand group-open:inline">ซ่อนข้อความดิบ</span>
+                  </summary>
+                  <pre className="max-h-[min(40vh,360px)] overflow-auto border-t border-neutral-100 bg-neutral-50/80 p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-break-word text-neutral-800 sm:p-5 sm:text-xs [scrollbar-gutter:stable]">
+                    {answer}
+                  </pre>
+                </details>
+              </>
+            ) : genericJson ? (
+              <>
+                <JsonAnswerSummary data={genericJson} />
                 <details className="group border-t border-neutral-100">
                   <summary className="cursor-pointer list-none px-4 py-3 text-xs font-medium text-neutral-600 hover:bg-neutral-50 sm:px-5 [&::-webkit-details-marker]:hidden">
                     <span className="text-brand group-open:hidden">แสดงข้อความดิบ (JSON) สำหรับคัดลอก / ส่งต่อ</span>

@@ -127,6 +127,19 @@ export class DifyClient {
       payload.files = workflowFiles;
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[DifyClient.execute] preparing request", {
+        mode,
+        path,
+        promptKey,
+        fileInputKey,
+        workflowFilesCount: workflowFiles?.length ?? 0,
+        inputsFileList: mode === "workflow" ? inputs[fileInputKey] : undefined,
+        payloadFilesAttached: mode === "chat" ? payload.files : undefined,
+        workflowFileIds: workflowFiles?.map((f) => f.upload_file_id),
+      });
+    }
+
     return fetch(`${this.baseUrl}${path}`, {
       method: "POST",
       headers: {

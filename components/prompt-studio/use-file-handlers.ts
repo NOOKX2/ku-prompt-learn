@@ -91,6 +91,11 @@ export function useFileHandlers(args: Args) {
         }
         const fd = new FormData();
         fd.append("file", file, file.name);
+        console.log("[studio] upload start -> /api/dify-upload", {
+          fileName: file.name,
+          sizeBytes: file.size,
+          mimeType: file.type,
+        });
         let res: Response;
         try {
           res = await fetch("/api/dify-upload", { method: "POST", body: fd });
@@ -98,6 +103,11 @@ export function useFileHandlers(args: Args) {
           setFileImportError(`อัปโหลด "${file.name}" ไปเซิร์ฟเวอร์ไม่สำเร็จ`);
           return false;
         }
+        console.log("[studio] upload response -> /api/dify-upload", {
+          fileName: file.name,
+          status: res.status,
+          ok: res.ok,
+        });
         let data: {
           id?: string;
           error?: string;
@@ -109,6 +119,13 @@ export function useFileHandlers(args: Args) {
           setFileImportError(`อัปโหลด "${file.name}" — อ่านคำตอบไม่ได้`);
           return false;
         }
+        console.log("[studio] upload payload -> /api/dify-upload", {
+          fileName: file.name,
+          id: data.id,
+          error: data.error,
+          knowledgeDocumentId: data.knowledge?.documentId,
+          knowledgeBatch: data.knowledge?.batch,
+        });
         if (!res.ok) {
           setFileImportError(data.error ?? `อัปโหลดไป Dify ไม่สำเร็จ (HTTP ${res.status})`);
           return false;
@@ -140,6 +157,11 @@ export function useFileHandlers(args: Args) {
         if (!knowledgeUploadEnabled) return true;
         const fd = new FormData();
         fd.append("file", file, file.name);
+        console.log("[studio] upload start -> /api/dify-knowledge-upload", {
+          fileName: file.name,
+          sizeBytes: file.size,
+          mimeType: file.type,
+        });
         let res: Response;
         try {
           res = await fetch("/api/dify-knowledge-upload", { method: "POST", body: fd });
@@ -147,6 +169,11 @@ export function useFileHandlers(args: Args) {
           setFileImportError(`อัปโหลด "${file.name}" เข้า Knowledge ไม่สำเร็จ (เครือข่าย)`);
           return false;
         }
+        console.log("[studio] upload response -> /api/dify-knowledge-upload", {
+          fileName: file.name,
+          status: res.status,
+          ok: res.ok,
+        });
         let data: { documentId?: string; error?: string };
         try {
           data = (await res.json()) as { documentId?: string; error?: string };
@@ -154,6 +181,11 @@ export function useFileHandlers(args: Args) {
           setFileImportError(`อัปโหลด "${file.name}" เข้า Knowledge — อ่านคำตอบไม่ได้`);
           return false;
         }
+        console.log("[studio] upload payload -> /api/dify-knowledge-upload", {
+          fileName: file.name,
+          documentId: data.documentId,
+          error: data.error,
+        });
         if (!res.ok) {
           setFileImportError(
             data.error ?? `เพิ่มเข้า Knowledge ไม่สำเร็จ (HTTP ${res.status})`,
