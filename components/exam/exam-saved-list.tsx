@@ -1,8 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
 
 export type ExamSummary = {
   id: string;
@@ -11,60 +7,19 @@ export type ExamSummary = {
   createdAt: string;
 };
 
-export function ExamSavedList() {
-  const { status } = useSession();
-  const [exams, setExams] = useState<ExamSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+type Props = {
+  signedIn: boolean;
+  exams: ExamSummary[];
+};
 
-  const load = useCallback(async () => {
-    if (status !== "authenticated") {
-      setExams([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/exams");
-      const data = (await res.json()) as { exams?: ExamSummary[] };
-      if (res.ok && Array.isArray(data.exams)) {
-        setExams(data.exams);
-      } else {
-        setExams([]);
-      }
-    } catch {
-      setExams([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (status === "loading") {
-    return (
-      <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลด…
-      </p>
-    );
-  }
-
-  if (status !== "authenticated") {
+export function ExamSavedList({ signedIn, exams }: Props) {
+  if (!signedIn) {
     return (
       <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
         <Link href="/login" className="font-medium text-brand underline hover:text-brand-hover">
           เข้าสู่ระบบ
         </Link>{" "}
         เพื่อดูข้อสอบที่สร้างจากสตูดิโอ (เทมเพลตข้อสอบจำลอง) และบันทึกอัตโนมัติหลัง Dify ตอบกลับ
-      </p>
-    );
-  }
-
-  if (loading) {
-    return (
-      <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลดรายการข้อสอบ…
       </p>
     );
   }

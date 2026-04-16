@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { parseReviewPlanJson } from "@/lib/review-plan-json";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 /** Prisma ต้องรันบน Node — ไม่ใช่ Edge */
@@ -67,6 +68,9 @@ export async function POST(req: Request) {
         createdAt: true,
       },
     });
+
+    revalidatePath("/review");
+    revalidatePath(`/review/${plan.id}`);
 
     return NextResponse.json({ plan });
   } catch (e: unknown) {

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { parseSimplifySummaryJson } from "@/lib/simplify-summary";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 /** Prisma ต้องรันบน Node — ไม่ใช่ Edge */
@@ -67,6 +68,9 @@ export async function POST(req: Request) {
         createdAt: true,
       },
     });
+
+    revalidatePath("/summary");
+    revalidatePath(`/summary/${summary.id}`);
 
     return NextResponse.json({ summary });
   } catch (e: unknown) {

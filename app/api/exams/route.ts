@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { buildExamStoredContent } from "@/lib/exam-stored-content";
 import { parseExamJson } from "@/lib/exam-json";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -61,6 +62,9 @@ export async function POST(req: Request) {
     },
     select: { id: true, title: true, createdAt: true },
   });
+
+  revalidatePath("/exam");
+  revalidatePath(`/exam/${exam.id}`);
 
 
   return NextResponse.json({ exam });

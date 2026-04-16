@@ -1,9 +1,15 @@
-"use client";
-
 import Link from "next/link";
-import { ReviewPlanSavedList } from "./review-plan-saved-list";
+import {
+  ReviewPlanSavedList,
+  type ReviewPlanListItem,
+} from "./review-plan-saved-list";
 
-export function ReviewPlanPageClient() {
+type Props = {
+  signedIn: boolean;
+  plans: ReviewPlanListItem[];
+};
+
+export function ReviewPlanPageClient({ signedIn, plans }: Props) {
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 text-black sm:px-8 sm:py-14">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand">ตารางทบทวนบทเรียน</p>
@@ -22,7 +28,7 @@ export function ReviewPlanPageClient() {
         <h2 className="text-lg font-semibold text-black">ตารางของฉัน</h2>
         <p className="mt-1 text-sm text-neutral-600">เรียงจากใหม่ไปเก่า — คลิกการ์ดเพื่อเปิดรายละเอียด</p>
         <div className="mt-4">
-          <ReviewPlanSavedList />
+          <ReviewPlanSavedList signedIn={signedIn} plans={plans} />
         </div>
       </section>
     </div>

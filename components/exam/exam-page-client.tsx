@@ -1,9 +1,12 @@
-"use client";
-
 import Link from "next/link";
-import { ExamSavedList } from "./exam-saved-list";
+import { ExamSavedList, type ExamSummary } from "./exam-saved-list";
 
-export function ExamPageClient() {
+type Props = {
+  signedIn: boolean;
+  exams: ExamSummary[];
+};
+
+export function ExamPageClient({ signedIn, exams }: Props) {
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 text-black sm:px-8 sm:py-14">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand">ทำข้อสอบ</p>
@@ -22,7 +25,7 @@ export function ExamPageClient() {
           เรียงจากใหม่ไปเก่า — คลิกการ์ดเพื่อทำข้อสอบและบันทึกคะแนน
         </p>
         <div className="mt-4">
-          <ExamSavedList />
+          <ExamSavedList signedIn={signedIn} exams={exams} />
         </div>
       </section>
     </div>

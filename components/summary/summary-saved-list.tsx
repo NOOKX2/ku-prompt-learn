@@ -1,8 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
 
 export type SummaryListItem = {
   id: string;
@@ -10,60 +6,19 @@ export type SummaryListItem = {
   createdAt: string;
 };
 
-export function SummarySavedList() {
-  const { status } = useSession();
-  const [summaries, setSummaries] = useState<SummaryListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+type Props = {
+  signedIn: boolean;
+  summaries: SummaryListItem[];
+};
 
-  const load = useCallback(async () => {
-    if (status !== "authenticated") {
-      setSummaries([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/summaries");
-      const data = (await res.json()) as { summaries?: SummaryListItem[] };
-      if (res.ok && Array.isArray(data.summaries)) {
-        setSummaries(data.summaries);
-      } else {
-        setSummaries([]);
-      }
-    } catch {
-      setSummaries([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (status === "loading") {
-    return (
-      <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลด…
-      </p>
-    );
-  }
-
-  if (status !== "authenticated") {
+export function SummarySavedList({ signedIn, summaries }: Props) {
+  if (!signedIn) {
     return (
       <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
         <Link href="/login" className="font-medium text-brand underline hover:text-brand-hover">
           เข้าสู่ระบบ
         </Link>{" "}
         เพื่อดูสรุปที่บันทึกจากสตูดิโอ
-      </p>
-    );
-  }
-
-  if (loading) {
-    return (
-      <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลดรายการสรุป…
       </p>
     );
   }

@@ -1,9 +1,12 @@
-"use client";
-
 import Link from "next/link";
-import { SummarySavedList } from "./summary-saved-list";
+import { SummarySavedList, type SummaryListItem } from "./summary-saved-list";
 
-export function SummaryPageClient() {
+type Props = {
+  signedIn: boolean;
+  summaries: SummaryListItem[];
+};
+
+export function SummaryPageClient({ signedIn, summaries }: Props) {
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 text-black sm:px-8 sm:py-14">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand">สรุปเนื้อหา</p>
@@ -22,7 +25,7 @@ export function SummaryPageClient() {
           เรียงจากใหม่ไปเก่า — คลิกการ์ดเพื่อเปิดรายละเอียด
         </p>
         <div className="mt-4">
-          <SummarySavedList />
+          <SummarySavedList signedIn={signedIn} summaries={summaries} />
         </div>
       </section>
     </div>

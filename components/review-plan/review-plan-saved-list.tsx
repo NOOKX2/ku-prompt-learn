@@ -1,8 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
 
 export type ReviewPlanListItem = {
   id: string;
@@ -10,60 +6,19 @@ export type ReviewPlanListItem = {
   createdAt: string;
 };
 
-export function ReviewPlanSavedList() {
-  const { status } = useSession();
-  const [plans, setPlans] = useState<ReviewPlanListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+type Props = {
+  signedIn: boolean;
+  plans: ReviewPlanListItem[];
+};
 
-  const load = useCallback(async () => {
-    if (status !== "authenticated") {
-      setPlans([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/review-plans");
-      const data = (await res.json()) as { plans?: ReviewPlanListItem[] };
-      if (res.ok && Array.isArray(data.plans)) {
-        setPlans(data.plans);
-      } else {
-        setPlans([]);
-      }
-    } catch {
-      setPlans([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (status === "loading") {
-    return (
-      <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลด…
-      </p>
-    );
-  }
-
-  if (status !== "authenticated") {
+export function ReviewPlanSavedList({ signedIn, plans }: Props) {
+  if (!signedIn) {
     return (
       <p className="text-sm text-amber-950 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3">
         <Link href="/login" className="font-medium text-brand underline hover:text-brand-hover">
           เข้าสู่ระบบ
         </Link>{" "}
         เพื่อดูตารางทบทวนบทเรียนที่สร้างจากสตูดิโอ
-      </p>
-    );
-  }
-
-  if (loading) {
-    return (
-      <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลดรายการตารางทบทวน…
       </p>
     );
   }
