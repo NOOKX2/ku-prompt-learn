@@ -1,6 +1,6 @@
 import { KU_FACULTY_OPTIONS } from "@/lib/ku-faculties";
 
-export type FieldType = "text" | "textarea" | "select" | "number";
+export type FieldType = "text" | "textarea" | "select" | "number" | "date";
 
 export type TemplateField = {
   key: string;
@@ -329,8 +329,7 @@ schema:
       {
         key: "examDate",
         label: "วันสอบหรือกรอบเวลา",
-        type: "text",
-        placeholder: "เช่น อีก 14 วัน / สอบกลางภาค 20 เม.ย.",
+        type: "date",
         required: true,
       },
       {
@@ -369,16 +368,50 @@ ${weak ? `- จุดที่ต้องการเสริม: ${weak}` : "
 ${syllabus ? `- หัวข้อที่ต้องครอบคลุม:\n${syllabus}` : ""}
 
 ## งาน
-1) จัดตารางอ่านหนังสือแบ่งเป็นวัน/ช่วงเวลา สอดคล้องกับชั่วโมงที่มี
+1) สร้าง "ตารางอ่านหนังสือ" เป็นวัน/ช่วงเวลา โดยพยายามจัดให้ครบช่วงก่อนถึงวันสอบ
 2) จัดลำดับความสำคัญ: หัวข้อหนัก/จุดอ่อนของผู้เรียน มาก่อน
-3) หลังแต่ละช่วงอ่าน ให้คำถามทบทวนความเข้าใจ 3–5 ข้อ (เลือกตอบสั้น/คำนวณตามสมควร)
+3) หลังแต่ละช่วงอ่าน ให้คำถามทบทวนความเข้าใจ 3–5 ข้อ
 4) วันสุดท้ายก่อนสอบ ให้แผน "รีวิวรวม" และ checklist
 
-## วิธีคิด (Chain-of-Thought)
-อธิบายสั้นๆ ว่าทำไมถึงจัดลำดับแบบนี้ ก่อนแสดงตาราง
-
 ## ข้อจำกัด
-ถ้าไม่มีรายละเอียดหัวข้อ ให้ถามผู้ใช้กลับเป็นข้อๆ แทนการเดาหัวข้อย่อยลึกเกินไป`;
+- ถ้าไม่มีรายละเอียดหัวข้อพอ ให้ใส่คำถามกลับไปที่ผู้ใช้ใน field ที่เหมาะสม (อย่าเดารายละเอียดลึกเกินไป)
+- ห้ามมีข้อความนอก JSON
+
+## รูปแบบผลลัพธ์ (บังคับ) — JSON เท่านั้น
+ตอบเป็น **JSON เดียวที่ parse ได้เท่านั้น** (ห้าม \`\`\`json, ห้าม markdown, ห้ามข้อความก่อน/หลัง)
+
+schema:
+{
+  "id": "ตารางอ่านหนังสือ",
+  "planVersion": "1",
+  "title": "ตารางอ่านหนังสือสำหรับ <วิชา>",
+  "subject": ${JSON.stringify(subject)},
+  "examDate": ${JSON.stringify(examDate)},
+  "hoursPerDay": ${JSON.stringify(hours)},
+  "weak": ${JSON.stringify(weak || "")},
+  "syllabus": ${JSON.stringify(syllabus || "")},
+  "schedule": [
+    {
+      "dayIndex": 1,
+      "label": "Day 1",
+      "date": null,
+      "sessions": [
+        {
+          "timeRange": "08:00-10:00",
+          "topics": ["หัวข้อย่อย 1", "หัวข้อย่อย 2"],
+          "reviewQuestions": ["คำถามทบทวน 1", "คำถามทบทวน 2", "คำถามทบทวน 3"]
+        }
+      ],
+      "dailyChecklist": ["เช็คสิ่งที่ควรทำ/เข้าใจในวันนี้"]
+    }
+  ],
+  "reviewChecklist": ["Checklist รีวิวรวมก่อนสอบ"]
+}
+
+หมายเหตุ:
+- schedule ต้องเป็นอาร์เรย์ (อย่างน้อย 5 วัน)
+- reviewChecklist ต้องเป็นอาร์เรย์ของ string
+`;
     },
   },
 ];

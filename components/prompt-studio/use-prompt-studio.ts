@@ -6,6 +6,7 @@ import type { DifyUploadedFileRef } from "@/lib/dify/types";
 import { downloadDifyAnswerAsPdf } from "@/lib/dify-answer-pdf";
 import { getTemplateById, promptTemplates } from "@/lib/prompt-templates";
 import { parseSimplifySummaryJson } from "@/lib/simplify-summary";
+import { parseReviewPlanJson } from "@/lib/review-plan-json";
 import { useGenerateStream } from "@/hooks/use-generate-stream";
 import {
   stripAllKuImportBlocks,
@@ -224,6 +225,27 @@ export function usePromptStudio() {
           });
         } catch {
           /* บันทึกสรุปไม่บังคับ — ไม่รบกวนการใช้สตูดิโอ */
+        }
+      }
+    }
+
+    if (
+      sessionStatus === "authenticated" &&
+      session?.user?.id &&
+      templateId === "schedule-check" &&
+      finalText?.trim()
+    ) {
+      const parsed = parseReviewPlanJson(finalText);
+      console.log("parse review plan", parsed);
+      if (parsed.ok) {
+        try {
+          await fetch("/api/review-plans", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rawAnswer: finalText }),
+          });
+        } catch {
+          /* บันทึกแผนทบทวนไม่บังคับ — ไม่รบกวนการใช้สตูดิโอ */
         }
       }
     }

@@ -80,6 +80,12 @@ export function StudioForm(props: Props) {
     attachmentFieldKey &&
     template.fields.find((f) => f.key === attachmentFieldKey)?.label;
 
+  const openNativeDatePicker = (el: HTMLInputElement) => {
+    // Chrome/Edge รองรับ showPicker() ให้เด้งปฏิทินทันทีเมื่อคลิกช่อง
+    const maybePicker = el as HTMLInputElement & { showPicker?: () => void };
+    maybePicker.showPicker?.();
+  };
+
   return (
     <div className="min-w-0 flex-1 space-y-6 xl:max-w-xl">
       <div className="rounded-2xl border border-neutral-200/90 bg-neutral-50/40 p-5 shadow-sm sm:p-6">
@@ -151,6 +157,16 @@ export function StudioForm(props: Props) {
                   value={values[f.key] ?? ""}
                   onChange={(e) => onFieldChange(f.key, e.target.value)}
                   placeholder={f.placeholder}
+                  className={`${inputClass} font-mono tabular-nums`}
+                />
+              ) : f.type === "date" ? (
+                <input
+                  id={f.key}
+                  type="date"
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => onFieldChange(f.key, e.target.value)}
+                  onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                  onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                   className={`${inputClass} font-mono tabular-nums`}
                 />
               ) : (

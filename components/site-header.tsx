@@ -9,6 +9,7 @@ const nav = [
   { href: "/", label: "หน้าแรก" },
   { href: "/studio", label: "สตูดิโอ" },
   { href: "/summary", label: "รายการสรุป" },
+  { href: "/review", label: "ตารางทบทวน" },
   { href: "/exam", label: "ทำข้อสอบ" },
   { href: "/about", label: "เกี่ยวกับ" },
 ] as const;

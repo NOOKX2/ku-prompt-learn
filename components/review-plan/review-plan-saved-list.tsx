@@ -4,35 +4,34 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 
-export type ExamSummary = {
+export type ReviewPlanListItem = {
   id: string;
   title: string;
-  score: number | null;
   createdAt: string;
 };
 
-export function ExamSavedList() {
+export function ReviewPlanSavedList() {
   const { status } = useSession();
-  const [exams, setExams] = useState<ExamSummary[]>([]);
+  const [plans, setPlans] = useState<ReviewPlanListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (status !== "authenticated") {
-      setExams([]);
+      setPlans([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/exams");
-      const data = (await res.json()) as { exams?: ExamSummary[] };
-      if (res.ok && Array.isArray(data.exams)) {
-        setExams(data.exams);
+      const res = await fetch("/api/review-plans");
+      const data = (await res.json()) as { plans?: ReviewPlanListItem[] };
+      if (res.ok && Array.isArray(data.plans)) {
+        setPlans(data.plans);
       } else {
-        setExams([]);
+        setPlans([]);
       }
     } catch {
-      setExams([]);
+      setPlans([]);
     } finally {
       setLoading(false);
     }
@@ -52,11 +51,11 @@ export function ExamSavedList() {
 
   if (status !== "authenticated") {
     return (
-      <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+      <p className="text-sm text-amber-950 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3">
         <Link href="/login" className="font-medium text-brand underline hover:text-brand-hover">
           เข้าสู่ระบบ
         </Link>{" "}
-        เพื่อดูข้อสอบที่สร้างจากสตูดิโอ (เทมเพลตข้อสอบจำลอง) และบันทึกอัตโนมัติหลัง Dify ตอบกลับ
+        เพื่อดูตารางทบทวนบทเรียนที่สร้างจากสตูดิโอ
       </p>
     );
   }
@@ -64,39 +63,39 @@ export function ExamSavedList() {
   if (loading) {
     return (
       <p className="text-sm text-neutral-500" aria-live="polite">
-        กำลังโหลดรายการข้อสอบ…
+        กำลังโหลดรายการตารางทบทวน…
       </p>
     );
   }
 
-  if (exams.length === 0) {
+  if (plans.length === 0) {
     return (
       <p className="text-sm text-neutral-600">
-        ยังไม่มีข้อสอบที่บันทึก — รันเทมเพลต &quot;ข้อสอบจำลอง&quot; ใน{" "}
+        ยังไม่มีตารางทบทวน — รันเทมเพลต &quot;ตาราง + เช็คความเข้าใจ&quot; ใน{" "}
         <Link href="/studio" className="font-medium text-brand underline hover:text-brand-hover">
           สตูดิโอ
         </Link>{" "}
-        ขณะล็อกอิน ระบบจะเก็บคำตอบจาก Dify ให้
+        ขณะล็อกอิน ระบบจะบันทึกให้
       </p>
     );
   }
 
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {exams.map((e) => (
-        <li key={e.id} className="min-w-0">
+      {plans.map((p) => (
+        <li key={p.id} className="min-w-0">
           <Link
-            href={`/exam/${e.id}`}
+            href={`/review/${p.id}`}
             className="group block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md"
           >
             <div className="border-b border-neutral-200 bg-neutral-50/70 p-3">
               <div className="mx-auto flex aspect-4/3 w-full max-w-[220px] items-center justify-center rounded-xl border border-neutral-300 bg-white shadow-xs">
-                <div className="w-[72%] rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-center">
-                  <div className="mx-auto mb-2 h-8 w-8 rounded-md bg-indigo-500 text-[10px] font-bold leading-8 text-white">
-                    EXAM
+                <div className="w-[72%] rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
+                  <div className="mx-auto mb-2 h-8 w-8 rounded-md bg-emerald-500 text-[10px] font-bold leading-8 text-white">
+                    PLAN
                   </div>
                   <p className="line-clamp-3 text-[11px] font-medium leading-tight text-neutral-700">
-                    {e.title}
+                    {p.title}
                   </p>
                 </div>
               </div>
@@ -104,24 +103,18 @@ export function ExamSavedList() {
 
             <div className="space-y-2 p-4">
               <p className="line-clamp-2 text-sm font-semibold text-black group-hover:text-brand">
-                {e.title}
+                {p.title}
               </p>
               <div className="flex items-center justify-between gap-2 text-xs text-neutral-500">
                 <span>
-                  {new Date(e.createdAt).toLocaleString("th-TH", {
+                  {new Date(p.createdAt).toLocaleString("th-TH", {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })}
                 </span>
-                {e.score != null ? (
-                  <span className="rounded-full bg-brand-muted/60 px-2 py-0.5 text-[11px] font-medium text-brand">
-                    คะแนน {e.score}%
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
-                    ยังไม่ทำ
-                  </span>
-                )}
+                <span className="rounded-full bg-brand-muted/60 px-2 py-0.5 text-[11px] font-medium text-brand">
+                  เปิดดู
+                </span>
               </div>
             </div>
           </Link>
@@ -130,3 +123,4 @@ export function ExamSavedList() {
     </ul>
   );
 }
+
