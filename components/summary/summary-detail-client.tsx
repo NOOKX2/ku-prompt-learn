@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
-import { JsonAnswerSummary, type JsonValue } from "@/components/prompt-studio/json-answer-summary";
-import { coerceStoredSimplifySummary } from "@/lib/simplify-summary";
 import { SummaryContentDisplay } from "./summary-content-display";
+import { coerceStoredSimplifySummary } from "@/lib/simplify-summary";
+import { JsonAnswerSummary, type JsonValue } from "@/components/prompt-studio/json-answer-summary";
 
 type SummaryRow = {
   id: string;

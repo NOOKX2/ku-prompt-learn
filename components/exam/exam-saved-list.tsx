@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
 
 export type ExamSummary = {
   id: string;
@@ -13,6 +18,23 @@ type Props = {
 };
 
 export function ExamSavedList({ signedIn, exams }: Props) {
+  const router = useRouter();
+  const [items, setItems] = useState<ExamSummary[]>(exams);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setItems(exams);
+  }, [exams]);
+
+  const deleteItem = async (item: ExamSummary) => {
+    const ok = window.confirm(`ลบชีทข้อสอบ "${item.title}" ?`);
+    if (!ok) return;
+    const res = await fetch(`/api/exams/${item.id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    setItems((prev) => prev.filter((x) => x.id !== item.id));
+    startTransition(() => router.refresh());
+  };
+
   if (!signedIn) {
     return (
       <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
@@ -24,7 +46,7 @@ export function ExamSavedList({ signedIn, exams }: Props) {
     );
   }
 
-  if (exams.length === 0) {
+  if (items.length === 0) {
     return (
       <p className="text-sm text-neutral-600">
         ยังไม่มีข้อสอบที่บันทึก — รันเทมเพลต &quot;ข้อสอบจำลอง&quot; ใน{" "}
@@ -38,12 +60,10 @@ export function ExamSavedList({ signedIn, exams }: Props) {
 
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {exams.map((e) => (
+      {items.map((e) => (
         <li key={e.id} className="min-w-0">
-          <Link
-            href={`/exam/${e.id}`}
-            className="group block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md"
-          >
+          <div className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md">
+            <Link href={`/exam/${e.id}`} className="block">
             <div className="border-b border-neutral-200 bg-neutral-50/70 p-3">
               <div className="mx-auto flex aspect-4/3 w-full max-w-[220px] items-center justify-center rounded-xl border border-neutral-300 bg-white shadow-xs">
                 <div className="w-[72%] rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-center">
@@ -56,6 +76,7 @@ export function ExamSavedList({ signedIn, exams }: Props) {
                 </div>
               </div>
             </div>
+            </Link>
 
             <div className="space-y-2 p-4">
               <p className="line-clamp-2 text-sm font-semibold text-black group-hover:text-brand">
@@ -78,8 +99,28 @@ export function ExamSavedList({ signedIn, exams }: Props) {
                   </span>
                 )}
               </div>
+              <div className="flex gap-2 pt-1">
+                <Link
+                  href={`/exam/${e.id}/edit`}
+                  aria-label="แก้ไข"
+                  title="แก้ไข"
+                  className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void deleteItem(e)}
+                  disabled={pending}
+                  aria-label="ลบ"
+                  title="ลบ"
+                  className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-          </Link>
+          </div>
         </li>
       ))}
     </ul>

@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
 
 export type ReviewPlanListItem = {
   id: string;
@@ -12,6 +17,23 @@ type Props = {
 };
 
 export function ReviewPlanSavedList({ signedIn, plans }: Props) {
+  const router = useRouter();
+  const [items, setItems] = useState<ReviewPlanListItem[]>(plans);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setItems(plans);
+  }, [plans]);
+
+  const deleteItem = async (item: ReviewPlanListItem) => {
+    const ok = window.confirm(`ลบชีทตารางทบทวน "${item.title}" ?`);
+    if (!ok) return;
+    const res = await fetch(`/api/review-plans/${item.id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    setItems((prev) => prev.filter((x) => x.id !== item.id));
+    startTransition(() => router.refresh());
+  };
+
   if (!signedIn) {
     return (
       <p className="text-sm text-amber-950 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3">
@@ -23,7 +45,7 @@ export function ReviewPlanSavedList({ signedIn, plans }: Props) {
     );
   }
 
-  if (plans.length === 0) {
+  if (items.length === 0) {
     return (
       <p className="text-sm text-neutral-600">
         ยังไม่มีตารางทบทวน — รันเทมเพลต &quot;ตาราง + เช็คความเข้าใจ&quot; ใน{" "}
@@ -37,12 +59,10 @@ export function ReviewPlanSavedList({ signedIn, plans }: Props) {
 
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {plans.map((p) => (
+      {items.map((p) => (
         <li key={p.id} className="min-w-0">
-          <Link
-            href={`/review/${p.id}`}
-            className="group block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md"
-          >
+          <div className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md">
+            <Link href={`/review/${p.id}`} className="block">
             <div className="border-b border-neutral-200 bg-neutral-50/70 p-3">
               <div className="mx-auto flex aspect-4/3 w-full max-w-[220px] items-center justify-center rounded-xl border border-neutral-300 bg-white shadow-xs">
                 <div className="w-[72%] rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
@@ -55,6 +75,7 @@ export function ReviewPlanSavedList({ signedIn, plans }: Props) {
                 </div>
               </div>
             </div>
+            </Link>
 
             <div className="space-y-2 p-4">
               <p className="line-clamp-2 text-sm font-semibold text-black group-hover:text-brand">
@@ -71,8 +92,28 @@ export function ReviewPlanSavedList({ signedIn, plans }: Props) {
                   เปิดดู
                 </span>
               </div>
+              <div className="flex gap-2 pt-1">
+                <Link
+                  href={`/review/${p.id}/edit`}
+                  aria-label="แก้ไข"
+                  title="แก้ไข"
+                  className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void deleteItem(p)}
+                  disabled={pending}
+                  aria-label="ลบ"
+                  title="ลบ"
+                  className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-          </Link>
+          </div>
         </li>
       ))}
     </ul>

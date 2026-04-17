@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
+import type { Prisma } from "@prisma/client";
 import { resolveExamFromContent } from "@/lib/exam-stored-content";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -41,23 +43,71 @@ export async function PATCH(req: Request, context: RouteContext) {
     return NextResponse.json({ error: "รูปแบบคำขอไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const score =
+  const scoreRaw =
     typeof body === "object" && body !== null && "score" in body
-      ? Number((body as { score: unknown }).score)
-      : NaN;
+      ? (body as { score: unknown }).score
+      : undefined;
+  const titleRaw =
+    typeof body === "object" && body !== null && "title" in body
+      ? (body as { title: unknown }).title
+      : undefined;
+  const contentRaw =
+    typeof body === "object" && body !== null && "content" in body
+      ? (body as { content: unknown }).content
+      : undefined;
 
-  if (!Number.isFinite(score) || score < 0 || score > 100) {
+  const nextScore =
+    scoreRaw === undefined || scoreRaw === null ? undefined : Number(scoreRaw);
+  const nextTitle =
+    titleRaw === undefined || titleRaw === null ? undefined : String(titleRaw).trim();
+
+  if (
+    nextScore !== undefined &&
+    (!Number.isFinite(nextScore) || nextScore < 0 || nextScore > 100)
+  ) {
     return NextResponse.json({ error: "score ต้องเป็นตัวเลข 0–100" }, { status: 400 });
+  }
+  if (nextTitle !== undefined && !nextTitle) {
+    return NextResponse.json({ error: "ชื่อข้อสอบห้ามว่าง" }, { status: 400 });
+  }
+
+  const data: { score?: number; title?: string; content?: Prisma.InputJsonValue } = {};
+  if (nextScore !== undefined) data.score = Math.round(nextScore);
+  if (nextTitle !== undefined) data.title = nextTitle;
+  if (contentRaw !== undefined) data.content = contentRaw as Prisma.InputJsonValue;
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "ไม่มีข้อมูลสำหรับแก้ไข" }, { status: 400 });
   }
 
   const updated = await prisma.exam.updateMany({
     where: { id, userId: session.user.id },
-    data: { score: Math.round(score) },
+    data,
   });
 
   if (updated.count === 0) {
     return NextResponse.json({ error: "ไม่พบข้อสอบ" }, { status: 404 });
   }
 
+  revalidatePath("/exam");
+  revalidatePath(`/exam/${id}`);
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_req: Request, context: RouteContext) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "ต้องเข้าสู่ระบบ" }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const deleted = await prisma.exam.deleteMany({
+    where: { id, userId: session.user.id },
+  });
+  if (deleted.count === 0) {
+    return NextResponse.json({ error: "ไม่พบข้อสอบ" }, { status: 404 });
+  }
+
+  revalidatePath("/exam");
+  revalidatePath(`/exam/${id}`);
   return NextResponse.json({ ok: true });
 }
