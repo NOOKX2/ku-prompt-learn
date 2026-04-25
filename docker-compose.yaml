@@ -37,6 +37,7 @@ services:
       NODE_ENV: development
       # NextAuth — ต้องมีในไฟล์ .env (ไม่ใช่แค่ .env.local) มิฉะนั้น compose/env_file จะไม่ส่งเข้า container
       AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env e.g. openssl rand -base64 32}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       # ในเครือข่าย Docker ชี้ service `db` พอร์ตภายใน 5432 เสมอ
       DB_HOST: db
       DB_PORT: "5432"

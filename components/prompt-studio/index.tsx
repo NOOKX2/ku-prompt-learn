@@ -35,6 +35,7 @@ export function PromptStudio() {
         unifiedFileInputRef={s.unifiedFileInputRef}
         onSelectTemplate={s.selectTemplate}
         onFieldChange={s.setField}
+        onApplyPreset={s.applyPreset}
         onUnifiedFiles={(files) => {
           if (s.attachmentFieldKey) void s.handleUnifiedFiles(s.attachmentFieldKey, files);
         }}

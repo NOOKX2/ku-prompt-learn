@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveExamFromContent } from "@/lib/exam-stored-content";
 import { ExamPageClient } from "@/components/exam/exam-page-client";
 
 export const metadata: Metadata = {
@@ -15,11 +16,26 @@ export default async function ExamPage() {
   const exams = userId
     ? (
         await prisma.exam.findMany({
-          where: { userId },
+          where: { userId, NOT: { title: "ไม่สามารถสร้างข้อสอบได้" } },
           orderBy: { createdAt: "desc" },
-          select: { id: true, title: true, score: true, createdAt: true },
+          select: { id: true, title: true, score: true, content: true, createdAt: true },
         })
-      ).map((e) => ({ ...e, createdAt: e.createdAt.toISOString() }))
+      ).map((e) => {
+        const parsed = resolveExamFromContent(e.content);
+        const totalMcq = parsed.ok ? parsed.exam.mcq.length : null;
+        const correctMcq =
+          e.score != null && totalMcq && totalMcq > 0
+            ? Math.max(0, Math.min(totalMcq, Math.round((e.score / 100) * totalMcq)))
+            : null;
+        return {
+          id: e.id,
+          title: e.title,
+          score: e.score,
+          correctMcq,
+          totalMcq,
+          createdAt: e.createdAt.toISOString(),
+        };
+      })
     : [];
 
   return <ExamPageClient signedIn={signedIn} exams={exams} />;

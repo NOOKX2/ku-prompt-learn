@@ -9,6 +9,8 @@ export type ExamSummary = {
   id: string;
   title: string;
   score: number | null;
+  correctMcq: number | null;
+  totalMcq: number | null;
   createdAt: string;
 };
 
@@ -90,11 +92,17 @@ export function ExamSavedList({ signedIn, exams }: Props) {
                   })}
                 </span>
                 {e.score != null ? (
-                  <span className="rounded-full bg-brand-muted/60 px-2 py-0.5 text-[11px] font-medium text-brand">
-                    คะแนน {e.score}%
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                    e.score >= 70
+                      ? "border-green-200 bg-green-50 text-green-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}>
+                    {e.correctMcq != null && e.totalMcq != null && e.totalMcq > 0
+                      ? `${e.correctMcq}/${e.totalMcq}`
+                      : `${e.score}%`}
                   </span>
                 ) : (
-                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
+                  <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-500">
                     ยังไม่ทำ
                   </span>
                 )}

@@ -166,6 +166,10 @@ export function usePromptStudio() {
     setValues((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  const applyPreset = useCallback((fields: Record<string, string>) => {
+    setValues((prev) => ({ ...prev, ...fields }));
+  }, []);
+
   const run = useCallback(async () => {
     const p = promptText.trim();
     if (!p) return;
@@ -307,6 +311,7 @@ export function usePromptStudio() {
     unifiedFileInputRef,
     selectTemplate,
     setField,
+    applyPreset,
     run,
     stop,
     copyPrompt,
