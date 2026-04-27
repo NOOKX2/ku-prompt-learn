@@ -43,8 +43,9 @@ services:
       DB_PORT: "5432"
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-ku_prompt_learn}
     # dev:docker ใช้ --webpack เพื่อหลีกเลี่ยง Turbopack + Prisma client ที่ prisma.summary หาย
-    # ถ้า migrate ค้าง P3009 (failed 20260414183000_add_summary): เช็คว่ามีตาราง Summary หรือยัง แล้วรัน
-    # `docker compose run --rm app bun run db:migrate:resolve-summary-applied` หรือ ...rolled-back ตามจริง
+    # ถ้า migrate ค้าง P3009: เช็คว่า migration นั้นใช้แล้วจริงหรือยัง แล้ว resolve
+    # - Summary: `docker compose run --rm app bun run db:migrate:resolve-summary-applied` (หรือ ...rolled-back)
+    # - exam isPublic: `docker compose run --rm app bun run db:migrate:resolve-exam-is-public-applied` (หรือ ...rolled-back)
     command: sh -c "bun install && bunx prisma migrate deploy && bunx prisma generate && bun run dev:docker"
     restart: unless-stopped
 

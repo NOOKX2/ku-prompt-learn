@@ -10,6 +10,8 @@
     "db:migrate:status": "prisma migrate status",
     "db:migrate:resolve-summary-applied": "prisma migrate resolve --applied 20260414183000_add_summary",
     "db:migrate:resolve-summary-rolled-back": "prisma migrate resolve --rolled-back 20260414183000_add_summary",
+    "db:migrate:resolve-exam-is-public-applied": "prisma migrate resolve --applied 20260425120000_exam_is_public",
+    "db:migrate:resolve-exam-is-public-rolled-back": "prisma migrate resolve --rolled-back 20260425120000_exam_is_public",
     "db:push": "prisma db push",
     "build": "prisma generate && next build",
     "start": "next start",

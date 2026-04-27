@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 const nav = [
   { href: "/studio", label: "สตูดิโอ" },
+  { href: "/exam", label: "ทำข้อสอบ" },
   { href: "/summary", label: "รายการสรุป" },
   { href: "/review", label: "ตารางทบทวน" },
-  { href: "/exam", label: "ทำข้อสอบ" },
   { href: "/about", label: "เกี่ยวกับ" },
 ] as const;
 
@@ -24,10 +24,10 @@ export function NavLinks() {
           <Link
             key={item.href}
             href={item.href}
-            className={`shrink-0 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+            className={`relative shrink-0 border-b-2 px-2.5 py-2 text-sm font-semibold transition-colors ${
               active
-                ? "bg-brand-muted text-brand ring-1 ring-brand/25"
-                : "text-black hover:bg-gray-50"
+                ? "border-brand text-brand"
+                : "border-transparent text-neutral-700 hover:text-brand"
             }`}
           >
             {item.label}

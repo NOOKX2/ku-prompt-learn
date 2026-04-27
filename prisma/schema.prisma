@@ -31,6 +31,8 @@ model Exam {
   /** ก้อนข้อมูลจาก Dify — เช่น { rawAnswer, exam? } */
   content   Json
   score     Int?
+  /** เผยแพร่ให้ทุกคนทำข้อสอบได้โดยไม่ต้องล็อกอิน */
+  isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

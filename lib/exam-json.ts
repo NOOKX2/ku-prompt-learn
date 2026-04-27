@@ -33,6 +33,8 @@ export type ExamBundle = {
   examVersion: "1";
   title: string;
   subject?: string;
+  /** แท็ก/ประเภทรายวิชาที่โมเดลอนุมานจากเนื้อหา (optional — สำหรับแสดงผลหรือ filter) */
+  subjectTags?: string[];
   difficulty?: string;
   instructions?: string;
   mcq: ExamMcqQuestion[];

@@ -27,7 +27,7 @@ export function BrandLogoLink() {
   return (
     <Link href="/" className="flex shrink-0 items-center gap-2.5">
       <Mark />
-      <span className="text-[15px] font-semibold tracking-tight text-brand">
+      <span className="text-2xl font-semibold tracking-tight text-brand">
         KU PromptLearn
       </span>
     </Link>

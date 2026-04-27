@@ -100,7 +100,15 @@ export function usePromptStudio() {
 
   const promptBase = useMemo(() => {
     try {
-      return template.buildPrompt(valuesForPrompt);
+      const base = template.buildPrompt(valuesForPrompt);
+      const pk = template.primaryImportFieldKey;
+      if (pk) {
+        const doc = (valuesForPrompt[pk] ?? "").trim();
+        if (doc) {
+          return `${base}\n\n---\n## เนื้อหาเอกสารที่นำเข้า (อ่านแล้วอนุมาน subject / subjectTags จากนี้ — ห้ามเดาเกินเอกสาร)\n\n${doc}`;
+        }
+      }
+      return base;
     } catch {
       return "";
     }

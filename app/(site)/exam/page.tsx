@@ -18,7 +18,7 @@ export default async function ExamPage() {
         await prisma.exam.findMany({
           where: { userId, NOT: { title: "ไม่สามารถสร้างข้อสอบได้" } },
           orderBy: { createdAt: "desc" },
-          select: { id: true, title: true, score: true, content: true, createdAt: true },
+          select: { id: true, title: true, score: true, isPublic: true, content: true, createdAt: true },
         })
       ).map((e) => {
         const parsed = resolveExamFromContent(e.content);
@@ -31,6 +31,7 @@ export default async function ExamPage() {
           id: e.id,
           title: e.title,
           score: e.score,
+          isPublic: e.isPublic,
           correctMcq,
           totalMcq,
           createdAt: e.createdAt.toISOString(),

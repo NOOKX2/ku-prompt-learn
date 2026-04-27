@@ -9,6 +9,7 @@ export type ExamSummary = {
   id: string;
   title: string;
   score: number | null;
+  isPublic: boolean;
   correctMcq: number | null;
   totalMcq: number | null;
   createdAt: string;
@@ -81,9 +82,16 @@ export function ExamSavedList({ signedIn, exams }: Props) {
             </Link>
 
             <div className="space-y-2 p-4">
-              <p className="line-clamp-2 text-sm font-semibold text-black group-hover:text-brand">
-                {e.title}
-              </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="line-clamp-2 text-sm font-semibold text-black group-hover:text-brand">
+                  {e.title}
+                </p>
+                {e.isPublic ? (
+                  <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                    สาธารณะ
+                  </span>
+                ) : null}
+              </div>
               <div className="flex items-center justify-between gap-2 text-xs text-neutral-500">
                 <span>
                   {new Date(e.createdAt).toLocaleString("th-TH", {

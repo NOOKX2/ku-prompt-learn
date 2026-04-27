@@ -28,12 +28,6 @@ export async function SiteHeader() {
               เข้าสู่ระบบ
             </Link>
           )}
-          <Link
-            href="/studio"
-            className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-neutral-800 sm:px-4 sm:text-sm"
-          >
-            เปิดสตูดิโอ
-          </Link>
         </div>
       </div>
     </header>

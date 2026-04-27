@@ -2,9 +2,11 @@ import type { PromptTemplate } from "@/lib/prompt-templates";
 
 export function defaultValues(t: PromptTemplate): Record<string, string> {
   const o: Record<string, string> = {};
+  if (t.primaryImportFieldKey) o[t.primaryImportFieldKey] = "";
   for (const f of t.fields) {
     if (f.type === "select" && f.options?.length) o[f.key] = f.options[0].value;
     else if (t.id === "mock-exam" && f.key === "count") o[f.key] = "5";
+    else if (t.id === "schedule-check" && f.key === "hoursPerDay") o[f.key] = "2";
     else o[f.key] = "";
   }
   return o;
@@ -35,10 +37,14 @@ export function collectPdfAttachmentMeta(
   attached: Record<string, File[]>,
 ): { fieldKey: string; name: string }[] {
   const meta: { fieldKey: string; name: string }[] = [];
+  const keys = new Set<string>();
   for (const field of template.fields) {
-    if (field.type !== "textarea") continue;
-    for (const file of attached[field.key] ?? []) {
-      if (isPdfFile(file)) meta.push({ fieldKey: field.key, name: file.name });
+    if (field.type === "textarea") keys.add(field.key);
+  }
+  if (template.primaryImportFieldKey) keys.add(template.primaryImportFieldKey);
+  for (const fieldKey of keys) {
+    for (const file of attached[fieldKey] ?? []) {
+      if (isPdfFile(file)) meta.push({ fieldKey, name: file.name });
     }
   }
   return meta;
@@ -67,8 +73,9 @@ export function appendDifyWorkflowUploadedPdfHint(
   return `${prompt.trimEnd()}\n\n---\n## ไฟล์ PDF ที่ส่งผ่าน Dify (แอปอัปโหลดแล้ว)\nรายการชื่อไฟล์:\n${list}\n\n**คำสั่งสำคัญ:** ไฟล์เหล่านี้อัปโหลดไป Dify แล้ว และแอปส่งต่อเป็นไฟล์แนบใน request (Chat App: ฟิลด์ \`files\` / Workflow: ตัวแปรเช่น \`upload_file\`) — **ให้ใช้เนื้อหาวิชาที่คุณได้รับจากการอ่าน/ประมวลผลไฟล์นี้ หรือจาก Knowledge/RAG ที่แอปส่งมา** เป็นฐานสร้างข้อสอบ\n- **ห้าม**ตัดสินว่า "ไม่มีเนื้อหา" หรือ "ไม่มีไฟล์แนบ" เพียงเพราะช่อง «เนื้อหาที่อนุญาตให้ใช้» ในฟอร์มสั้นหรือมีแต่ชื่อไฟล์ — ช่องนั้นไม่ได้ใส่ข้อความ PDF เต็มโดยออกแบบ; เนื้อหาอยู่ในไฟล์ที่ส่งมาทาง API แล้ว\n- ถ้าคุณได้รับข้อความ/สรุปจากเอกสารจริงในบริบทจาก Dify แล้ว ให้ใช้เป็นหลักตามกฎ «ห้ามเดาเนื้อหาวิชา»\n- ถ้าคุณ **ไม่ได้รับ**เนื้อหาเอกสารจากระบบเลย จึงค่อยตอบตามกฎขาดข้อมูล และแนะนำให้ตรวจว่าแอป Dify รับไฟล์ใน Chat/Workflow และโหนด LLM อ่านเอกสารหรือยัง\n`;
 }
 
-/** ช่อง textarea หลักที่รวมนำเข้าข้อความ (จุดเดียวในฟอร์ม) */
+/** ช่อง textarea หลักที่รวมนำเข้าข้อความ หรือ `primaryImportFieldKey` ถ้าไม่มี textarea */
 export function primaryAttachmentFieldKey(template: PromptTemplate): string | null {
+  if (template.primaryImportFieldKey) return template.primaryImportFieldKey;
   const textareas = template.fields.filter((f) => f.type === "textarea");
   if (textareas.length === 0) return null;
   const prefer = ["material", "content", "syllabus", "chapters", "focus"];

@@ -1,5 +1,6 @@
 import type { PromptTemplate } from "@/lib/prompt-templates";
 import { promptTemplates } from "@/lib/prompt-templates";
+import type { SubjectPreset } from "@/lib/subject-presets";
 import type { ImportSlot } from "@/components/prompt-studio/import-blocks";
 import { useEffect, useState, type MutableRefObject } from "react";
 import {
@@ -9,6 +10,19 @@ import {
 } from "@/lib/constants";
 import { getPresetsForTemplate } from "@/lib/subject-presets";
 import { formatBytes } from "./helpers";
+
+const presetColorClass: Record<NonNullable<SubjectPreset["color"]>, string> = {
+  red: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+  orange: "border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100",
+  amber: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+  green: "border-green-200 bg-green-50 text-green-700 hover:bg-green-100",
+  blue: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+  indigo: "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+  purple: "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100",
+  pink: "border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100",
+  teal: "border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100",
+  slate: "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100",
+};
 
 type Props = {
   templateId: string;
@@ -81,9 +95,12 @@ export function StudioForm(props: Props) {
           : `${slotsForField[0].fileName} +${slotsForField.length - 1} ไฟล์`
         : recentPickLabel ?? "เลือกไฟล์…";
 
-  const primaryFieldLabel =
-    attachmentFieldKey &&
-    template.fields.find((f) => f.key === attachmentFieldKey)?.label;
+  const hasFieldForAttachment =
+    Boolean(attachmentFieldKey) &&
+    template.fields.some((f) => f.key === attachmentFieldKey);
+  const primaryFieldLabel = attachmentFieldKey
+    ? (template.fields.find((f) => f.key === attachmentFieldKey)?.label ?? template.primaryImportLabel)
+    : undefined;
 
   const openNativeDatePicker = (el: HTMLInputElement) => {
     // Chrome/Edge รองรับ showPicker() ให้เด้งปฏิทินทันทีเมื่อคลิกช่อง
@@ -128,7 +145,11 @@ export function StudioForm(props: Props) {
                 key={preset.id}
                 type="button"
                 onClick={() => onApplyPreset(preset.fields)}
-                className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-xs transition hover:border-brand/40 hover:bg-brand-muted/60 hover:text-brand active:scale-95"
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium shadow-xs transition active:scale-95 ${
+                  preset.color
+                    ? presetColorClass[preset.color]
+                    : "border-neutral-200 bg-white text-neutral-700 hover:border-brand/40 hover:bg-brand-muted/60 hover:text-brand"
+                }`}
               >
                 <span aria-hidden>{preset.emoji}</span>
                 {preset.label}
@@ -167,7 +188,11 @@ export function StudioForm(props: Props) {
                   {knowledgeUploadEnabled ? (
                     <> และ<strong className="font-medium">เพิ่มเข้า Knowledge base</strong>ที่ตั้งค่าไว้</>
                   ) : null}
-                  {" "}แล้วส่งเป็นอินพุต workflow ตอนกด «รันคำสั่ง» — ช่อง «{primaryFieldLabel ?? attachmentFieldKey}» ใช้พิมพ์เพิ่มเติมเท่านั้น
+                  {" "}
+                  แล้วส่งเป็นอินพุต workflow ตอนกด «รันคำสั่ง»
+                  {hasFieldForAttachment
+                    ? ` — ช่อง «${primaryFieldLabel ?? attachmentFieldKey}» ใช้พิมพ์เพิ่มเติมเท่านั้น`
+                    : " — ไม่ต้องพิมพ์เนื้อหา; อัปโหลดเอกสารเป็นหลัก"}
                 </>
               ) : (
                 <>
@@ -175,7 +200,9 @@ export function StudioForm(props: Props) {
                   {knowledgeUploadEnabled ? (
                     <> · PDF จะ<strong className="font-medium">เพิ่มเข้า Knowledge base</strong>ที่ตั้งค่าไว้ด้วย</>
                   ) : null}
-                  {" "}· PDF สแกนที่ดึงไม่ได้จะอ้างชื่อให้ RAG (สูงสุด {MAX_ATTACH_PER_FIELD} ไฟล์แบบนั้น)
+                  {" "}
+                  · PDF สแกนที่ดึงไม่ได้จะอ้างชื่อให้ RAG (สูงสุด {MAX_ATTACH_PER_FIELD} ไฟล์แบบนั้น)
+                  {hasFieldForAttachment ? null : " · โหมดนี้ใช้เนื้อหาจากไฟล์โดยไม่ต้องกรอกช่องอื่น"}
                 </>
               )}
             </p>
@@ -200,6 +227,22 @@ export function StudioForm(props: Props) {
             />
             <button
               type="button"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const fl = e.dataTransfer.files;
+                if (fl && fl.length > 0) {
+                  const names = Array.from(fl).map((f) => f.name);
+                  setRecentPickLabel(
+                    names.length === 1 ? names[0] : `${names[0]} +${names.length - 1} ไฟล์`,
+                  );
+                  onUnifiedFiles(fl);
+                }
+              }}
               onClick={() => document.getElementById("unified-file-input")?.click()}
               className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm font-medium transition ${
                 attachList.length || recentPickLabel || slotsForField.length
