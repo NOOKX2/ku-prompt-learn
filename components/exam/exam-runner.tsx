@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ExamBundle } from "@/lib/exam-json";
 
 type Props = {
   exam: ExamBundle;
   /** ถ้ามี — หลังส่งคำตอบจะบันทึกคะแนนปรนัย (เปอร์เซ็นต์ 0–100) ลงฐานข้อมูล */
   examRecordId?: string;
+  showHeader?: boolean;
 };
 
-export function ExamRunner({ exam, examRecordId }: Props) {
+export function ExamRunner({ exam, examRecordId, showHeader = true }: Props) {
+  const router = useRouter();
   const scorePatchSent = useRef(false);
   const [mcqPick, setMcqPick] = useState<Record<string, string>>({});
   const [essayDraft, setEssayDraft] = useState<Record<string, string>>({});
@@ -48,19 +51,56 @@ export function ExamRunner({ exam, examRecordId }: Props) {
     scorePatchSent.current = false;
   }, []);
 
+  const submitAndOpenResult = useCallback(async () => {
+    let correct = 0;
+    let total = 0;
+    for (const q of exam.mcq) {
+      total++;
+      const pick = mcqPick[q.id];
+      if (pick && pick === q.correctChoiceId) correct++;
+    }
+    const pct = total > 0 ? Math.round((100 * correct) / total) : 0;
+    if (examRecordId) {
+      try {
+        localStorage.setItem(`ku-exam-last-picks:${examRecordId}`, JSON.stringify(mcqPick));
+      } catch {
+        // ไม่บังคับ
+      }
+    }
+
+    if (examRecordId) {
+      scorePatchSent.current = true;
+      try {
+        await fetch(`/api/exams/${examRecordId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ score: pct }),
+        });
+      } catch {
+        // ไม่ขัดขวางการไปหน้าสรุปคะแนน
+      }
+      router.push(`/exam/${examRecordId}/result`);
+      return;
+    }
+
+    router.push(`/exam/result?correct=${correct}&total=${total}`);
+  }, [exam.mcq, examRecordId, mcqPick, router]);
+
   return (
     <div className="space-y-8">
-      <header className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-brand">ข้อสอบ (จาก JSON)</p>
-        <h1 className="mt-2 text-xl font-semibold tracking-tight text-black sm:text-2xl">{exam.title}</h1>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-600">
-          {exam.subject ? <span>รายวิชา: {exam.subject}</span> : null}
-          {exam.difficulty ? <span>ระดับ: {exam.difficulty}</span> : null}
-        </div>
-        {exam.instructions ? (
-          <p className="mt-4 text-sm leading-relaxed text-neutral-800">{exam.instructions}</p>
-        ) : null}
-      </header>
+      {showHeader ? (
+        <header className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand">ข้อสอบ (จาก JSON)</p>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight text-black sm:text-2xl">{exam.title}</h1>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-600">
+            {exam.subject ? <span>รายวิชา: {exam.subject}</span> : null}
+            {exam.difficulty ? <span>ระดับ: {exam.difficulty}</span> : null}
+          </div>
+          {exam.instructions ? (
+            <p className="mt-4 text-sm leading-relaxed text-neutral-800">{exam.instructions}</p>
+          ) : null}
+        </header>
+      ) : null}
 
       {exam.mcq.length === 0 && exam.essay.length === 0 ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -180,7 +220,7 @@ export function ExamRunner({ exam, examRecordId }: Props) {
         {!submitted ? (
           <button
             type="button"
-            onClick={() => setSubmitted(true)}
+            onClick={() => void submitAndOpenResult()}
             className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
           >
             ส่งคำตอบ

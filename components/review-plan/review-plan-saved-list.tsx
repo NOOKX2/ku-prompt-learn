@@ -8,6 +8,7 @@ import { Pencil, Trash2 } from "lucide-react";
 export type ReviewPlanListItem = {
   id: string;
   title: string;
+  isPublic: boolean;
   createdAt: string;
 };
 
@@ -78,9 +79,16 @@ export function ReviewPlanSavedList({ signedIn, plans }: Props) {
             </Link>
 
             <div className="space-y-2 p-4">
-              <p className="line-clamp-2 text-sm font-semibold text-black group-hover:text-brand">
-                {p.title}
-              </p>
+              <div className="flex flex-wrap items-start gap-1.5">
+                <p className="line-clamp-2 flex-1 text-sm font-semibold text-black group-hover:text-brand">
+                  {p.title}
+                </p>
+                {p.isPublic ? (
+                  <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                    สาธารณะ
+                  </span>
+                ) : null}
+              </div>
               <div className="flex items-center justify-between gap-2 text-xs text-neutral-500">
                 <span>
                   {new Date(p.createdAt).toLocaleString("th-TH", {

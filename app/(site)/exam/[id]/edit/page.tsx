@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ExamEditClient } from "@/components/exam/exam-edit-client";
+import { ExamEditClient } from "../../components/exam-edit-client";
 
 type Props = { params: Promise<{ id: string }> };
 

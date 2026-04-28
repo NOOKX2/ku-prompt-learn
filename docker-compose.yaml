@@ -46,6 +46,8 @@ services:
     # ถ้า migrate ค้าง P3009: เช็คว่า migration นั้นใช้แล้วจริงหรือยัง แล้ว resolve
     # - Summary: `docker compose run --rm app bun run db:migrate:resolve-summary-applied` (หรือ ...rolled-back)
     # - exam isPublic: `docker compose run --rm app bun run db:migrate:resolve-exam-is-public-applied` (หรือ ...rolled-back)
+    # - summary isPublic: `docker compose run --rm app bunx prisma migrate resolve --applied 20260425130000_summary_is_public`
+    # - review_plan isPublic: `docker compose run --rm app bunx prisma migrate resolve --applied 20260425140000_review_plan_is_public`
     command: sh -c "bun install && bunx prisma migrate deploy && bunx prisma generate && bun run dev:docker"
     restart: unless-stopped
 

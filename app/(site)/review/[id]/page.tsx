@@ -20,24 +20,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReviewPlanByIdPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    return (
-      <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 text-black sm:px-8 sm:py-14">
-        <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
-          <Link href="/login" className="font-medium text-brand underline hover:text-brand-hover">
-            เข้าสู่ระบบ
-          </Link>{" "}
-          เพื่อเปิดตารางทบทวนนี้
-        </p>
-      </div>
-    );
-  }
+  const userId = session?.user?.id ?? null;
 
   const row = await prisma.reviewPlan.findFirst({
-    where: { id, userId },
-    select: { content: true, createdAt: true },
+    where: { id },
+    select: { userId: true, content: true, isPublic: true, createdAt: true },
   });
 
   if (!row) {
@@ -53,14 +40,32 @@ export default async function ReviewPlanByIdPage({ params }: Props) {
     );
   }
 
+  const isOwner = userId === row.userId;
+
+  if (!row.isPublic && !isOwner) {
+    return (
+      <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 text-black sm:px-8 sm:py-14">
+        <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+          <Link href="/login" className="font-medium text-brand underline hover:text-brand-hover">
+            เข้าสู่ระบบ
+          </Link>{" "}
+          เพื่อเปิดตารางทบทวนนี้
+        </p>
+      </div>
+    );
+  }
+
   const parsed = coerceStoredReviewPlan(row.content);
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 text-black sm:px-8 sm:py-14">
       <ReviewPlanDetailView
+        reviewPlanId={id}
         createdAtIso={row.createdAt.toISOString()}
         parsed={parsed}
         rawContent={row.content}
+        isOwner={isOwner}
+        isPublic={row.isPublic}
       />
     </div>
   );

@@ -46,6 +46,7 @@ model Summary {
   userId    String
   topic     String
   content   Json
+  isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -59,6 +60,7 @@ model ReviewPlan {
   userId    String
   title     String
   content   Json
+  isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

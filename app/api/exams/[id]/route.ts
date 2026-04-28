@@ -82,6 +82,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   revalidatePath("/exam");
   revalidatePath(`/exam/${id}`);
+  revalidatePath(`/exam/${id}/result`);
   return NextResponse.json({ ok: true });
 }
 

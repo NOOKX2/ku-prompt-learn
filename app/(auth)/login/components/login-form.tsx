@@ -9,8 +9,8 @@ import {
   AuthPasswordField,
   GoogleGlyph,
 } from "@/components/auth/auth-fields";
-import { loginAction, signInWithGoogleAction } from "../actions";
-import { AUTH_FORM_INITIAL, type AuthFormState } from "../auth-types";
+import { loginAction, signInWithGoogleAction } from "../../actions";
+import { AUTH_FORM_INITIAL, type AuthFormState } from "../../auth-types";
 
 type Props = {
   showGoogle: boolean;

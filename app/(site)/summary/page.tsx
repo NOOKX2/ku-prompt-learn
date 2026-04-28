@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { SummaryPageClient } from "@/components/summary/summary-page-client";
+import { SummaryPageClient } from "./components/summary-page-client";
 
 export const metadata: Metadata = {
   title: "รายการสรุปทั้งหมด",
@@ -17,7 +17,7 @@ export default async function SummaryPage() {
         await prisma.summary.findMany({
           where: { userId },
           orderBy: { createdAt: "desc" },
-          select: { id: true, topic: true, createdAt: true },
+          select: { id: true, topic: true, isPublic: true, createdAt: true },
         })
       ).map((s) => ({ ...s, createdAt: s.createdAt.toISOString() }))
     : [];

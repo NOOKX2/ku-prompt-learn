@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveExamFromContent } from "@/lib/exam-stored-content";
-import { ExamPageClient } from "@/components/exam/exam-page-client";
+import { ExamPageClient } from "./components/exam-page-client";
 
 export const metadata: Metadata = {
   title: "รายการข้อสอบทั้งหมด",

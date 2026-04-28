@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BrandHeroMark } from "@/components/brand-logo";
 import { isGoogleOAuthConfigured } from "@/lib/auth-env";
-import { LoginForm } from "./login-form";
+import { LoginForm } from "./components/login-form";
 
 export const metadata: Metadata = {
   title: "เข้าสู่ระบบ",

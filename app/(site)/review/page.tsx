@@ -17,7 +17,7 @@ export default async function ReviewPlanPage() {
         await prisma.reviewPlan.findMany({
           where: { userId },
           orderBy: { createdAt: "desc" },
-          select: { id: true, title: true, createdAt: true },
+          select: { id: true, title: true, isPublic: true, createdAt: true },
         })
       ).map((p) => ({ ...p, createdAt: p.createdAt.toISOString() }))
     : [];

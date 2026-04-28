@@ -8,6 +8,7 @@ const nav = [
   { href: "/exam", label: "ทำข้อสอบ" },
   { href: "/summary", label: "รายการสรุป" },
   { href: "/review", label: "ตารางทบทวน" },
+  { href: "/community", label: "ชุมชน" },
   { href: "/about", label: "เกี่ยวกับ" },
 ] as const;
 

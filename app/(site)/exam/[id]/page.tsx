@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
-import { ExamDetailView } from "@/components/exam/exam-detail-view";
+import { ExamDetailView } from "../components/exam-detail-view";
 import { resolveExamFromContent } from "@/lib/exam-stored-content";
 import { prisma } from "@/lib/prisma";
 
